@@ -1,6 +1,6 @@
 @echo off
 rem Presented with heart by Q3aN.
-rem 2022.12.10
+rem 2023.07.06
 
 setlocal EnableDelayedExpansion
 
@@ -31,6 +31,13 @@ if exist %ROM_Name%.rom xcopy %ROM_Name%.rom %ROM_Name%\
 for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i`) do (
     if "%%i" NEQ "" (xcopy %%i %ROM_Name%\)
 )
+for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`) do (
+    set POJ_Name=%%i
+
+)
+for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map"`) do (
+    xcopy %POJ_Name%.map %ROM_Name%\
+)
 explorer %~dp0%ROM_Name%
 goto End
 
@@ -54,6 +61,13 @@ for /f "usebackq delims=" %%i in (`dir /b ^| ^(findstr /i /c:".cab"^)`) do (
 )
 for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i`) do (
     if "%%i" NEQ "" (xcopy %%i %ROM_Name%\)
+)
+for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`) do (
+    set POJ_Name=%%i
+
+)
+for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map"`) do (
+    xcopy %POJ_Name%.map %ROM_Name%\
 )
 explorer %~dp0%ROM_Name%
 goto End
