@@ -33,10 +33,9 @@ for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i`) do (
 )
 for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`) do (
     set POJ_Name=%%i
-
 )
 for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map"`) do (
-    xcopy %POJ_Name%.map %ROM_Name%\
+    if exist %%i xcopy %%i %ROM_Name%\
 )
 explorer %~dp0%ROM_Name%
 goto End
@@ -64,10 +63,9 @@ for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i`) do (
 )
 for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`) do (
     set POJ_Name=%%i
-
 )
 for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map"`) do (
-    xcopy %POJ_Name%.map %ROM_Name%\
+    if exist %%i xcopy %%i %ROM_Name%\
 )
 explorer %~dp0%ROM_Name%
 goto End
