@@ -1,14 +1,14 @@
 @echo off
 setlocal enabledelayedexpansion
 
-:: Presented by Q3aN.
-:: 2023.02.05
+rem Presented by Q3aN.
+rem 2023.11.27
 
-:: find avaliavle image and wait for user input
+rem find avaliavle image and wait for user input
 set found_image=0
 echo.
 echo =====================================================
-echo 发现以下镜像文件：
+echo Found below image: 
 for /f "usebackq delims=" %%i in (`%~d0 ^& cd %~dp0 ^& dir /s/b *.esd *.wim ^| find /v "boot.wim .:\\sources\\install."`) do (
     set /a found_image=found_image+1
     echo   !found_image!. %%i
@@ -27,10 +27,10 @@ for %%i in (C D E F G H I J K L M N O P Q R X T U Y W X Y Z) do (
 echo.
 echo =====================================================
 set choice=
-set /p choice=选择以继续：
+set /p choice=Choice to continue: 
 echo.
 
-:: check user input
+rem check user input
 if /i "%choice%" EQU "" goto Cancel
 if /i "%choice%" EQU "0" goto Cancel
 for /f "delims=0123456789" %%i in ("%choice%") do (
@@ -38,7 +38,7 @@ for /f "delims=0123456789" %%i in ("%choice%") do (
 )
 if /i "%choice%" GTR "%found_image%" goto Cancel
 
-:: set user select image path
+rem set user select image path
 set found_image=0
 for /f "usebackq delims=" %%i in (`%~d0 ^& cd %~dp0 ^& dir /s/b *.esd *.wim ^| find /v "boot.wim .:\\sources\\install."`) do (
     set /a found_image=found_image+1
@@ -55,7 +55,7 @@ for %%i in (C D E F G H I J K L M N O P Q R X T U Y W X Y Z) do (
     )
 )
 
-:: list disk and wait for user input
+rem list disk and wait for user input
 echo list disk > temp.txt
 diskpart /s temp.txt
 set disk_count=0
@@ -65,10 +65,10 @@ for /f "usebackq delims=" %%i in (`diskpart /s temp.txt ^| find /i "GB"`) do (
 echo.
 echo =====================================================
 set choice=
-set /p choice=选择目标磁盘：
+set /p choice=Select Disk to install: 
 echo.
 
-:: check user input
+rem check user input
 if /i "%choice%" EQU "" goto Cancel
 for /f "delims=0123456789" %%i in ("%choice%") do (
     if "%%i" NEQ "" goto Cancel
@@ -100,15 +100,15 @@ bcdboot W:\Windows
 
 echo.
 echo =====================================================
-echo 安装完成！
-echo  1. 进入工厂模式
-echo  2. 创建本地账户
-echo  3. 创建管理员账户
-echo  4. 配置 S Mode
+echo Install completed!
+echo  1. Audio Mode
+echo  2. Local User
+echo  3. Admin User
+echo  4. S mode
 echo.
 echo =====================================================
 set choice=
-set /p choice=选择下一步：
+set /p choice=Select next boot: 
 echo.
 if /i "%choice%"=="1" goto Audit
 if /i "%choice%"=="2" goto User
@@ -116,7 +116,7 @@ if /i "%choice%"=="3" goto Admin
 if /i "%choice%"=="4" goto Smode
 goto End
 
-:: Audit mode
+rem Audit mode
 :Audit
 echo ^<?xml version="1.0" encoding="utf-8"?^> > unattend.xml
 echo ^<unattend xmlns="urn:schemas-microsoft-com:unattend"^> >> unattend.xml
@@ -130,7 +130,7 @@ echo     ^</settings^> >> unattend.xml
 echo ^</unattend^> >> unattend.xml
 goto DoneAnswer
 
-:: Local user
+rem Local user
 :User
 echo ^<?xml version="1.0" encoding="utf-8"?^> > unattend.xml
 echo ^<unattend xmlns="urn:schemas-microsoft-com:unattend"^> >> unattend.xml
@@ -151,7 +151,7 @@ echo     ^</settings^> >> unattend.xml
 echo ^</unattend^> >> unattend.xml
 goto DoneAnswer
 
-:: Administrator
+rem Administrator
 :Admin
 echo ^<?xml version="1.0" encoding="utf-8"?^> > unattend.xml
 echo ^<unattend xmlns="urn:schemas-microsoft-com:unattend"^> >> unattend.xml
@@ -171,7 +171,7 @@ echo     ^</settings^> >> unattend.xml
 echo ^</unattend^> >> unattend.xml
 goto DoneAnswer
 
-:: S Mode
+rem S Mode
 :Smode
 echo ^<unattend xmlns="urn:schemas-microsoft-com:unattend"^> > unattend.xml
 echo     ^<settings pass="offlineServicing"^> >> unattend.xml
@@ -185,7 +185,7 @@ goto DoneAnswer
 :Cancel
 echo.
 echo =====================================================
-echo 操作取消。
+echo Cancel.
 echo.
 goto End
 
@@ -194,7 +194,7 @@ xcopy unattend.xml W:\Windows\Panther\
 if exist unattend.xml del unattend.xml
 echo.
 echo =====================================================
-echo 已添加应答文件。
+echo Answer file added.
 echo.
 goto End
 
