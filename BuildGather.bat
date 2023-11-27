@@ -1,6 +1,6 @@
 @echo off
-rem Presented with heart by Q3aN.
-rem 2023.07.06
+rem Presented by Q3aN.
+rem 2023.11.24
 
 setlocal EnableDelayedExpansion
 
@@ -46,15 +46,24 @@ echo.
 echo =====================================================
 echo Gather files for Samsung project.
 echo.
+
+for /f "usebackq tokens=2 delims=	" %%i in (`findstr /i /c:"SAMSUNG_ONEPACK_FILENAME" Build\Token.h`) do (
+    set OnePack_Name=%%i
+)
+if "%ROM_Name:~6,3%" EQU "" (
+    for /f "usebackq tokens=2 delims=	" %%i in (`findstr /i /c:"SAMSUNG_BIOS_MINOR_VERSION" Build\Token.h`) do (
+        set Minor_Ver=%%i
+    )
+    set ROM_Name=%ROM_Name%_!Minor_Ver!
+    set OnePack_Name=%OnePack_Name%_!Minor_Ver!
+)
 if exist %ROM_Name% (del /q %ROM_Name%\*) else (mkdir %ROM_Name%)
 if exist Build.log xcopy Build.log %ROM_Name%\
 if exist Build\Token.h xcopy Build\Token.h %ROM_Name%\
 if exist Build\Token.mak xcopy Build\Token.mak %ROM_Name%\
 if exist %ROM_Name%.BIN xcopy %ROM_Name%.BIN %ROM_Name%\
 if exist %ROM_Name%.CAP xcopy %ROM_Name%.CAP %ROM_Name%\
-for /f "usebackq tokens=2 delims=	" %%i in (`findstr /i /c:"SAMSUNG_ONEPACK_FILENAME" Build\Token.h`) do (
-    if exist %%i.exe xcopy %%i.exe %ROM_Name%\
-)
+if exist %OnePack_Name%.exe xcopy %OnePack_Name%.exe %ROM_Name%\
 for /f "usebackq delims=" %%i in (`dir /b ^| ^(findstr /i /c:".cab"^)`) do (
     if exist %%i xcopy %%i %ROM_Name%\
 )
