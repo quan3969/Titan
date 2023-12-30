@@ -1,54 +1,66 @@
 @echo off
-rem Presented with heart by Q3aN.
-rem 2022.12.10
 
-if not exist "Token_s.h" goto Start_Sort
+rem By Q3aN 231229
+set ver=v01
+
 echo.
 echo =====================================================
-set /p choice=Clear up? (Y/y): 
-if /i "%choice%"=="Y" goto Clear_Files
-if /i "%choice%"=="y" goto Clear_Files
+echo  Welcome to BuildSort %ver%, sorting now:
+echo.
 
-:Start_Sort
+call :Sort_Cmd "Token.h" "Token_s.h"
+call :Sort_Cmd "Token.mak" "Token_s.mak"
+call :Sort_Custom "SetupDefaults.i" "SetupDefaults_s.i"
+
 echo.
 echo =====================================================
-echo Please wait...
 echo.
-:: Sort Token.h
-if exist "Token.h" goto Sort_1
-goto Not_Sort_1
-:Sort_1
-sort "Token.h" > "Token_s.h"
-:Not_Sort_1
 
-:: Sort Token.mak
-if exist "Token.mak" goto Sort_2
-goto Not_Sort_2
-:Sort_2
-sort "Token.mak" > "Token_s.mak"
-:Not_Sort_2
+pause
+exit
 
-:: Sort SetupDefaults.i
-if exist "SetupDefaults.i" goto Sort_3
-goto Not_Sort_3
-:Sort_3
-if exist "SetupDefaults_s.i" del "SetupDefaults_s.i"
-if exist "SetupDefaults_ss.i" del "SetupDefaults_ss.i"
 
-for /f "usebackq delims=" %%a in (`findstr /c:"." "SetupDefaults.i" ^| findstr /v "#line"`) do (
-    echo.%%a >>SetupDefaults_s.i
+:: Use CMD command to sort file line by name
+:: %~1: file input
+:: %~2: file output
+:Sort_Cmd
+setLocal enableDelayedExpansion
+if not exist %~1 (
+    exit /b 0
 )
+echo.
+echo  -- Sorting: %~1
+echo.
+sort %~1 > %~2
+endLocal
+exit /b 0
 
-powershell -command "((get-content SetupDefaults_s.i) -replace 'STRING_TOKEN\(.......', '') -replace 'STRING_TOKEN \(.......', '' | set-content SetupDefaults_ss.i"
 
-:Not_Sort_3
-goto End
-
-:Clear_Files
-if exist "Token_s.h" del "Token_s.h"
-if exist "Token_s.mak" del "Token_s.mak"
-if exist "SetupDefaults.i" del "SetupDefaults_s.i"
-if exist "SetupDefaults_ss.i" del "SetupDefaults_ss.i"
-del BuildSort.bat
-
-:End
+:: Use custom command to sort file and remove unwanted string
+:: %~1: file input
+:: %~2: file output
+:Sort_Custom
+setLocal enableDelayedExpansion
+if not exist %~1 (
+    exit /b 0
+)
+if exist %~2 (
+    del %~2
+)
+echo.
+echo  -- Sorting: %~1
+echo.
+for /f "usebackq delims=" %%a in (`findstr /c:"." %~1 ^| findstr /v "#line"`) do (
+    echo.%%a >>%~2
+)
+for %%a in (
+    "((((get-content %~2) " 
+    "-replace 'STRING_TOKEN\(.......', '') "
+    "-replace 'STRING_TOKEN \(.......', '') "
+    "-replace 'questionid = .....', 'questionid = ') "
+    "-replace 'key = .....', 'key = ' "
+    "| set-content %~2"
+) do set Cmd_Exc=!Cmd_Exc!%%~a
+powershell -command "%Cmd_Exc%"
+endLocal
+exit /b 0
