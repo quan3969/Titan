@@ -1,7 +1,7 @@
 @echo off
-
-rem By Q3aN 240126
-set ver=v01
+setLocal enableDelayedExpansion
+rem By Q3aN 240131
+set ver=v02
 
 echo.
 echo =====================================================
@@ -14,14 +14,14 @@ echo.
 echo =====================================================
 echo.
 
-exit
+endLocal
+exit /b 0
 
 rem ****************************************************************************
 rem Check and save build output files
 :Save_Buildfiles
 setLocal enableDelayedExpansion
-
-rem 1. Check build complete
+:: 1. Check build complete
 if not exist Build\Token.h (
     echo.
     echo ^> Project may bot be compiled.
@@ -29,12 +29,10 @@ if not exist Build\Token.h (
     pause
     exit /b 0
 )
-
 for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"DEBUG_MODE" Build\Token.h`) do (
     set Debug_Mode=%%i
 )
-
-rem 2. Check Samsung Project
+:: 2. Check Samsung Project
 for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"SAMSUNG_BIOS_MAJOR_VERSION" Build\Token.h`) do (
     set Ver_Major=%%i
 )
@@ -45,8 +43,7 @@ if "%Ver_Major%" NEQ "" (
     call :Save_Samsung %Ver_Major% %Ver_Minor% %Debug_Mode%
     exit /b 0
 )
-
-rem 3. Check AMI project
+:: 3. Check AMI project
 for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"RECOVERY_ROM" Build\Token.h`) do (
     set Rom_Name=%%i
 )
@@ -54,7 +51,6 @@ if "%Rom_Name%" NEQ "" (
     call :Save_AMI %Rom_Name%
     exit /b 0
 )
-
 endLocal
 exit /b 0
 
@@ -68,16 +64,18 @@ setLocal enableDelayedExpansion
 echo.
 echo ^> Gather files for Samsung project.
 echo.
+:: for E00JZR_01A
 if "%~3" EQU "1" (
     set Rom_Name=%~1_%~2_dbg
 ) else (
     set Rom_Name=%~1_%~2
 )
+:: for E00JZR01A
 for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"FWCAPSULE_FILE_NAME" Build\Token.h`) do (
     set Version_Now_Using=%%i
 )
 if %~1%~2 EQU %Version_Now_Using% (
-    set Rom_Name=%Version_Now_Using%
+    set Rom_Name=%~1%~2
 )
 if exist %Rom_Name% (del /q %Rom_Name%\*) else (mkdir %Rom_Name%)
 if exist Build.log xcopy Build.log %Rom_Name%\
@@ -87,8 +85,8 @@ if exist %Rom_Name%.BIN xcopy %Rom_Name%.BIN %Rom_Name%\
 if exist %Rom_Name%.map xcopy %Rom_Name%.map %Rom_Name%\
 if exist %~1.map xcopy %~1.map %Rom_Name%\
 if exist %Rom_Name%.CAP xcopy %Rom_Name%.CAP %Rom_Name%\
-if exist WIN_%Rom_Name%.exe xcopy WIN_%Rom_Name%.exe %Rom_Name%\
 if exist WIN_%~1_%~2.exe xcopy WIN_%~1_%~2.exe %Rom_Name%\
+if exist WIN_%~1_%~2_dbg.exe xcopy WIN_%~1_%~2.exe %Rom_Name%\
 for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i ^| findstr /i /c:"Build"`) do (
     if "%%i" NEQ "" (xcopy %%i %Rom_Name%\)
 )
@@ -99,7 +97,6 @@ for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| findstr /i /c:"B
     if exist %%i xcopy %%i %Rom_Name%\
 )
 explorer %~dp0%ROM_Name%
-
 endLocal
 exit /b 0
 
