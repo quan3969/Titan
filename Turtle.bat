@@ -1,7 +1,7 @@
 @echo off
 
-rem By Q3aN 230903
-set ver=v01
+rem By Q3aN 240221
+set ver=v02
 
 call :AskAdmin
 echo.
@@ -21,6 +21,7 @@ call :Set_AutoUpdate     0
 call :Set_UsbPrompt      0
 call :Set_RemoteDesktop  1
 call :Set_ShowHidden     1
+:: call :Set_Recovery       0
 
 echo.
 echo =====================================================
@@ -47,6 +48,32 @@ if %ERRORLEVEL% GTR 0 (
 )
 endLocal
 exit
+
+
+rem ****************************************************************************
+rem bcdedit /set {current} recoveryenabled no
+rem Disable system auto repair after abnormal shutdown
+:Set_Recovery
+setLocal enableDelayedExpansion
+set val=0
+for /f "tokens=2" %%i in ('bcdedit ^| find "recoveryenabled"') do (
+    if /i "%%i"=="Yes" set val=1
+)
+if "%~1" EQU "0" if %val% EQU 1 (
+    bcdedit /set {current} recoveryenabled no >nul
+    echo   Recovery:           1 -^> 0
+    endLocal
+    exit /b
+)
+if "%~1" EQU "1" if %val% EQU 0 (
+    bcdedit /set {current} recoveryenabled yes >nul
+    echo   Recovery:           0 -^> 1
+    endLocal
+    exit /b
+)
+echo   Recovery:           %val%
+endLocal
+exit /b
 
 
 :: Set menu menu style for Win11
@@ -232,4 +259,3 @@ if "%~1" EQU "1" if %val% EQU 0 (
 echo   Show Hidden:        %val%
 endLocal
 exit /b 0
-
