@@ -1,8 +1,8 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For Titan WinPE.
-rem By Q3aN 240207
-set ver=v01
+rem By Q3aN 240304
+set ver=v02
 
 rem echo.
 rem echo =====================================================
@@ -25,8 +25,8 @@ rem Show the avaliable menu item.
 :Init_Titan
 setLocal enableDelayedExpansion
 for %%i in (C D E F G H I J K L M N O P Q R X T U Y W X Y Z) do (
-    if exist "%%i:\4-Misc\Scripts\WinInstaller.bat" (
-        set "CleanOS_Path=%%i:\4-Misc\Scripts\WinInstaller.bat"
+    if exist "%%i:\4-Misc\Scripts\WinInst.bat" (
+        set "CleanOS_Path=%%i:\4-Misc\Scripts\WinInst.bat"
     )
     if exist "%%i:\1-Apps\7-Zip\7zFM.exe" (
         set "Explorer_Path=%%i:\1-Apps\7-Zip\7zFM.exe"
