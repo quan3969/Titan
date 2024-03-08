@@ -1,53 +1,121 @@
 @echo off
-
-rem By Q3aN 240221
-set ver=v02
+setLocal enableDelayedExpansion
+rem All in one script for windows customization
+rem By Q3aN 240308
+set ver=v03
 
 call :AskAdmin
-echo.
-echo =====================================================
-echo  Welcome to Turtle %ver%, stting up now:
-echo.
-
-:: Win11
-call :Set_LagecyMenu     1
-
-:: Win10
-:: call :Set_AntiSpyWare    0
-
-:: Win10/Win11
-call :Set_ShowSeconds    1
-call :Set_AutoUpdate     0
-call :Set_UsbPrompt      0
-call :Set_RemoteDesktop  1
-call :Set_ShowHidden     1
-:: call :Set_Recovery       0
 
 echo.
 echo =====================================================
+echo ^>
+echo ^> Welcome to Turtle %ver%
+
+@REM :: Win11
+@REM call :Set_LagecyMenu     1
+if %errorlevel% EQU 0 ( call :Set_LagecyMenu     1 )
+:: if %errorlevel% EQU 0 ( call :Set_Language "en-US" )
+
+@REM :: Win10
+:: if %errorlevel% EQU 0 ( call :Set_AntiSpyWare    0 )
+
+@REM :: Win10/Win11
+if %errorlevel% EQU 0 ( call :Set_ShowSeconds    1 )
+if %errorlevel% EQU 0 ( call :Set_AutoUpdate     0 )
+if %errorlevel% EQU 0 ( call :Set_UsbPrompt      0 )
+if %errorlevel% EQU 0 ( call :Set_RemoteDesktop  1 )
+:: if %errorlevel% EQU 0 ( call :Set_ShowHidden     1 )
+:: if %errorlevel% EQU 0 ( call :Set_Recovery       0 )
+
+call :Do_Ending %errorlevel%
+
+echo ^>
+echo =====================================================
 echo.
 
+if %errorlevel% EQU 5 exit /b
+endLocal
 pause
-exit
+exit /b
 
-:: Ask user for administrator privileges 
+
+rem ****************************************************************************
+rem Set current OS language
+rem %~1: language to set "en-US", "zh-CN", "ko-KR"
+:Set_Language
+rem Local Experience Packs (LXPs)
+set lpxs_added=0
+for /f "usebackq delims=" %%i in (`Dism /Online /English /Get-Packages ^| find "LanguagePack" ^| find "%~1"`) do (
+    if exist %bat_dir%\etc\%~1\Microsoft-Windows-Client-Language-Pack_x64_%~1.cab ( set lpxs_added=1 )
+)
+if %lpxs_added% EQU 0 (
+    Dism /Online /Add-Package /PackagePath:%bat_dir%\etc\%~1\Microsoft-Windows-Client-Language-Pack_x64_%~1.cab
+)
+for /f "usebackq tokens=2 delims=:" %%i in (`DISM /Online /English /Get-CapabilityInfo /CapabilityName:Language.Basic~~~%~1~0.0.1.0 ^| find "State"`) do (
+    if /i "%%i"==" Not Present" ( if exist %bat_dir%\etc\%~1\Microsoft-Windows-LanguageFeatures-Basic-%~1-Package~31bf3856ad364e35~amd64~~.cab (
+            Dism /Online /Add-capability /CapabilityName:"Language.Basic~~~%~1~0.0.1.0" /source:%bat_dir%\etc\%~1
+    ))
+)
+for /f "usebackq tokens=2 delims=:" %%i in (`powershell Get-WinUserLanguageList ^| find "LanguageTag"`) do (
+    if /i "%%i"==" en-US" ( 
+        powershell "$LangList = Get-WinUserLanguageList; $LangList.Add('%~1'); Set-WinUserLanguageList $LangList -force"
+    )
+)
+rem Features On Demand (FODs)
+rem Download and apply if need
+set culture_setted=0
+for /f "usebackq delims=" %%i in (`powershell Get-Culture ^| find "%~1"`) do (
+    set culture_setted=1
+)
+if %culture_setted% EQU 0 (
+    rem Add one time run to next boot
+    reg add "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce" /v "SetLang" /t REG_SZ /d "powershell Set-WinUILanguageOverride -Language %~1; Restart-Computer" /f
+)
+rem UIIntl (intl.cpl)
+set locale_setted=0
+for /f "usebackq delims=" %%i in (`powershell Get-WinSystemLocale ^| find "%~1"`) do (
+    set locale_setted=1
+)
+if %locale_setted% EQU 0 (
+    powershell Set-WinSystemLocale -SystemLocale %~1
+)
+exit /b
+
+
+rem ****************************************************************************
+rem Do the ending and clean up job
+rem %~1: Ending reason:
+rem        0 - Success
+rem        4 - Not admin (user click "No")
+rem        5 - Not admin (user click "Yes", origin script, don't care)
+:Do_Ending
+if "%~1" EQU "0" ( echo ^>
+    echo ^> Success
+) else if "%~1" EQU "4" ( echo ^>
+    echo ^> Please run as administrator
+)
+exit /b
+
+
+rem ****************************************************************************
+rem Ask user for administrator privileges 
+rem SET bat_dir: Current path
 :AskAdmin
-if "[%1]" == "[49127c4b-02dc-482e-ac4f-ec4d659b7547]" exit /b 0
+set bat_dir=%~dp0
+if "[%1]" == "[49127c4b-02dc-482e-ac4f-ec4d659b7547]" (
+    set bat_dir=%~2
+    exit /b 0
+)
 reg query HKU\S-1-5-19\Environment >nul 2>&1 && exit /b 0
-set command="""%~f0""" 49127c4b-02dc-482e-ac4f-ec4d659b7547
+set command="""%~f0""" 49127c4b-02dc-482e-ac4f-ec4d659b7547 %~dp0
 setLocal enableDelayedExpansion
 set "command=!command:'=''!"
-powershell -NoProfile Start-Process -FilePath '%COMSPEC%' ^
+powershell -NoProfile Start-Process -FilePath '%ComSpec%' ^
 -ArgumentList '/c """!command!"""' -Verb RunAs 2>nul
-if %ERRORLEVEL% GTR 0 (
-    echo =====================================================
-    echo This script needs to be executed as an administrator.
-    echo =====================================================
-    echo.
-    pause
+if %errorlevel% GTR 0 (
+    exit /b 4
 )
-endLocal
-exit
+exit /b 5
 
 
 rem ****************************************************************************
