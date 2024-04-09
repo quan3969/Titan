@@ -1,15 +1,15 @@
 @echo off
 setLocal enableDelayedExpansion
 rem Fine BIOS update files and generate script for easy update.
-rem By Q3aN 240131
-set ver=v01
+rem By Q3aN 240409
+set ver=v02
 
 echo.
 echo =====================================================
-echo Welcome to Generate %ver%, output now:
-echo.
+echo ^>
+echo ^> Welcome to Generate %ver%
 
-set "LNL_ID=JZR"
+set "LNL_ID=JZR VAJ ALY RHF"
 set "MTL_ID=RHA RHB RHD"
 set "RPL_ID=RGU RGS RGT RHC"
 set "ADL_ID=RGG RGE RGF RGL RGM RGL"
@@ -21,13 +21,18 @@ set "DnX_MTL=Intel(R) MeteorLake P Chipset - DnX Recovery Image"
 set "DnX_RPL=Intel(R) AlderLake P Chipset - DnX Recovery Image"
 
 set "AFU_Para1=/p /b /n /capsule /q"
-set "Para1_Support=LNL MTL"
+set "Para1_Support=MTL"
 set "AFU_Para2=/p /b /n /r /e /capsule /q"
 set "Para2_Support=RPL ADL TGL CML"
+set "AFU_Para3=/p /b /n /meul /capsule /q"
+set "Para3_Support=LNL"
 
 set ID_PW=
 for %%a in (
-    "JZR-VENUS5 " 
+    "ALY-Mars5 "
+    "VAJ-VENUS5 "
+    "RHF-VENUS5 "
+    "JZR-VENUS5 "
     "RHA-Venus4 "
     "RHB-Mars4 "
     "RGU-Venus3 "
@@ -40,7 +45,7 @@ call :Gen_BIN
 call :Gen_CAP
 call :Gen_EXE
 
-echo.
+echo ^>
 echo =====================================================
 echo.
 
@@ -53,19 +58,20 @@ rem Find the BIOS EXE file, generate script according to platform
 :Gen_EXE
 setLocal enableDelayedExpansion
 for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
-    set File_Name=%%i
+    set file_name=%%i
     for %%a in ( %ID_PW% ) do (
-        set ID_PW_Now=%%a
-        if "!File_Name:~7,3!" EQU "!ID_PW_Now:~0,3!" (
-            for /f "usebackq tokens=2 delims=-" %%x in (`echo !ID_PW_Now!`) do ( 
-                set PW_Now=%%x
-                if "!File_Name:~4,1!" NEQ "E" (
-                    set Out_Name=!File_Name:~4,3!_EXE.bat
+        set file_id_pw=%%a
+        if "!file_name:~7,3!" EQU "!file_id_pw:~0,3!" (
+            for /f "usebackq tokens=2 delims=-" %%x in (`echo !file_id_pw!`) do ( 
+                set file_pw=%%x
+                if "!file_name:~4,1!" NEQ "E" (
+                    set out_name=!file_name:~4,3!_EXE.bat
                 ) else (
-                    set Out_Name=!File_Name:~11,3!_EXE.bat
+                    set out_name=!file_name:~11,-4!_EXE.bat
                 )
-                echo !File_Name! /eu:!PW_Now! > !Out_Name!
-                echo !Out_Name!
+                echo !file_name! /eu:!file_pw! > !out_name!
+                echo ^>
+                echo ^> !out_name!
             )
         )
     )
@@ -80,41 +86,45 @@ rem Find the BIOS CAP file, generate script according to platform
 setLocal enableDelayedExpansion
 for /f "usebackq delims=" %%i in (`dir /b *.cap 2^>nul`) do (
     set File_Name=%%i
-    set Platform_Is=
+    set File_Platform=
     for %%a in ( %LNL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=LNL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=LNL" )
     )
     for %%a in ( %MTL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=MTL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=MTL" )
     )
     for %%a in ( %RPL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=RPL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=RPL" )
     )
     for %%a in ( %ADL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=ADL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=ADL" )
     )
     for %%a in ( %TGL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=TGL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=TGL" )
     )
     for %%a in ( %CML_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=CML" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=CML" )
     )
-    if "!Platform_Is!" NEQ "" (
+    if "!File_Platform!" NEQ "" (
         if "!File_Name:~0,1!" NEQ "E" (
-            set Out_Name=!File_Name:~0,3!_CAP.nsh
-        ) else if "!File_Name:~-7,3!" NEQ "dbg" (
-            set Out_Name=!File_Name:~-7,3!_CAP.nsh
+            set out_name=!File_Name:~0,3!_CAP.nsh
+        ) else if "!File_Name:~6,1!" NEQ "_" (
+            set out_name=!File_Name:~6,-4!_CAP.nsh
         ) else (
-            set Out_Name=!File_Name:~-11,3!_CAP.nsh
+            set out_name=!file_name:~7,-4!_CAP.nsh
         )
-        for /f "usebackq delims=" %%i in (`echo !Para1_Support! ^| find "!Platform_Is!"`) do (
-            echo AfuEfix64_!Platform_Is!.efi !File_Name! !AFU_Para1! > !Out_Name!
-            echo !Out_Name!
+        for /f "usebackq delims=" %%i in (`echo !Para1_Support! ^| find "!File_Platform!"`) do (
+            set "afu_cmd=AfuEfix64_!File_Platform!.efi !File_Name! !AFU_Para1!"
         )
-        for /f "usebackq delims=" %%i in (`echo !Para2_Support! ^| find "!Platform_Is!"`) do (
-            echo AfuEfix64_!Platform_Is!.efi !File_Name! !AFU_Para2! > !Out_Name!
-            echo !Out_Name!
+        for /f "usebackq delims=" %%i in (`echo !Para2_Support! ^| find "!File_Platform!"`) do (
+            set "afu_cmd=AfuEfix64_!File_Platform!.efi !File_Name! !AFU_Para2!"
         )
+        for /f "usebackq delims=" %%i in (`echo !Para3_Support! ^| find "!File_Platform!"`) do (
+            set "afu_cmd=AfuEfix64_!File_Platform!.efi !File_Name! !AFU_Para3!"
+        )
+        echo !afu_cmd! > !out_name!
+        echo ^>
+        echo ^> !out_name!
     )
 )
 endLocal
@@ -132,37 +142,37 @@ for /f "usebackq delims=" %%i in (`dir /b DNX*.bin 2^>nul`) do (
 )
 for /f "usebackq delims=" %%i in (`dir /b *.bin 2^>nul`) do (
     set File_Name=%%i
-    set Platform_Is=
+    set File_Platform=
     for %%a in ( %LNL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=LNL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=LNL" )
     )
     for %%a in ( %MTL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=MTL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=MTL" )
     )
     for %%a in ( %RPL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=RPL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=RPL" )
     )
     for %%a in ( %ADL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=ADL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=ADL" )
     )
     for %%a in ( %TGL_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=TGL" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=TGL" )
     )
     for %%a in ( %CML_ID% ) do (
-        if "!File_Name:~3,3!" EQU "%%a" ( set "Platform_Is=CML" )
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=CML" )
     )
-    if "!Platform_Is!" NEQ "" (
+    if "!File_Platform!" NEQ "" (
         if "!File_Name:~0,1!" NEQ "E" (
             set Out_Name=!File_Name:~0,3!
-        ) else if "!File_Name:~-7,3!" NEQ "dbg" (
-            set Out_Name=!File_Name:~-7,3!
+        ) else if "!File_Name:~6,1!" NEQ "_" (
+            set out_name=!File_Name:~6,-4!
         ) else (
-            set Out_Name=!File_Name:~-11,3!
+            set Out_Name=!file_name:~7,-4!
         )
         if "!DnxFwExist!" EQU "1" (
-            call :Out_DnX !Platform_Is! !DnxFwName! !File_Name! !Out_Name!_DnX.bat
+            call :Out_DnX !File_Platform! !DnxFwName! !File_Name! !Out_Name!_DnX.bat
         ) else (
-            call :Out_Fpt Fpt_!Platform_Is!.efi !File_Name! !Out_Name!_BIN.nsh
+            call :Out_Fpt Fpt_!File_Platform!.efi !File_Name! !Out_Name!_BIN.nsh
         )
     )
 )
@@ -226,7 +236,8 @@ echo goto End>> %~3
 echo.>> %~3
 echo :End>> %~3
 echo echo -on>> %~3
-echo %~3
+echo ^>
+echo ^> %~3
 endLocal
 exit /b 0
 
@@ -267,7 +278,8 @@ echo echo close this windows. >> %~4
 echo echo. >> %~4
 echo pause >> %~4
 echo dnxFwDownloader --command startover --flags 9 >> %~4
-echo %~4
+echo ^>
+echo ^> %~4
 echo dnxFwDownloader --command startover --flags 9 > ExitDnXMode.bat
 echo dnxFwDownloader --command readbootmedia --fw_dnx %~2 --path dump.bin --device spi --idx 0 --part 0 --start 0 --blocks 8192 > RomDump.bat
 echo pause >> RomDump.bat
