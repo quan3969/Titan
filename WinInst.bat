@@ -1,24 +1,24 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For Windows Images install.
-rem By Q3aN 240304
-set ver=v01
+rem By Q3aN 240411
+set ver=v02
 
 rem Future feature:
 rem 1. Auto OOBE
-rem 2. Drap and drop to swm
-rem 3. FFU backup and restore
-rem 4. Prevent select wrong disk
+rem 2. FFU backup and restore
+rem 3. Prevent select wrong disk
 
 set win_vol=W
 set sys_vol=S
 set rcy_vol=R
 set tmp_file="%~dp0tmp.txt"
+set end_pause=0
 
 echo.
 echo =====================================================
 echo ^>
-echo ^> Welcome to WinInst %ver%:
+echo ^> Welcome to WinInst %ver%
 
 call :Find_Images
 if %errorlevel% EQU 0 ( call :Get_Target_Image )
@@ -32,6 +32,7 @@ echo ^>
 echo =====================================================
 echo.
 
+if "%end_pause%" EQU "1" ( pause )
 endLocal
 exit /b
 
@@ -44,18 +45,16 @@ rem        1 - Input invalid
 rem        2 - No avaliable image
 rem        3 - No avaliable disk
 :Do_Ending
-if "%~1" EQU "0" (
-    echo ^>
+if "%~1" EQU "0" ( echo ^>
     echo ^> Success
-) else if "%~1" EQU "1" (
-    echo ^>
+) else if "%~1" EQU "1" ( echo ^>
     echo ^> Input invalid
-) else if "%~1" EQU "2" (
-    echo ^>
+) else if "%~1" EQU "2" ( echo ^>
     echo ^> No avaliable image
-) else if "%~1" EQU "3" (
-    echo ^>
+) else if "%~1" EQU "3" ( echo ^>
     echo ^> No avaliable disk
+) else ( echo ^>
+    echo ^> Unknown error
 )
 if exist %tmp_file% del %tmp_file%
 exit /b
