@@ -1,13 +1,12 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For Windows Images install.
-rem By Q3aN 240411
-set ver=v02
+rem By Q3aN 240502
+set ver=v03
 
 rem Future feature:
 rem 1. Auto OOBE
 rem 2. FFU backup and restore
-rem 3. Prevent select wrong disk
 
 set win_vol=W
 set sys_vol=S
@@ -44,15 +43,21 @@ rem        0 - Success
 rem        1 - Input invalid
 rem        2 - No avaliable image
 rem        3 - No avaliable disk
+rem        4 - Disk where the script resides
+rem        5 - Removable disk
 :Do_Ending
 if "%~1" EQU "0" ( echo ^>
     echo ^> Success
 ) else if "%~1" EQU "1" ( echo ^>
-    echo ^> Input invalid
+    echo ^> Fail: Input invalid
 ) else if "%~1" EQU "2" ( echo ^>
-    echo ^> No avaliable image
+    echo ^> Fail: No avaliable image
 ) else if "%~1" EQU "3" ( echo ^>
-    echo ^> No avaliable disk
+    echo ^> Fail: No avaliable disk
+) else if "%~1" EQU "4" ( echo ^>
+    echo ^> Fail: This is the disk where this script resides
+) else if "%~1" EQU "5" ( echo ^>
+    echo ^> Fail: This is a removeable disk
 ) else ( echo ^>
     echo ^> Unknown error
 )
@@ -108,6 +113,8 @@ rem Set errorlevel:
 rem        0 - Success
 rem        1 - Input invalid
 rem        3 - No avaliable disk
+rem        4 - Disk where the script resides
+rem        5 - Removable disk
 :Get_Target_Disk
 echo list disk > %tmp_file%
 diskpart /s %tmp_file%
@@ -124,6 +131,14 @@ for /f "delims=0123456789" %%i in ("%sel_disk%") do (
     if "%%i" NEQ "" exit /b 1
 )
 if %sel_disk% GEQ %disk_cnt% exit /b 1
+echo sel disk %sel_disk% > %tmp_file%
+echo detail disk >> %tmp_file%
+for /f "usebackq tokens=3 delims= " %%i in (`diskpart /s %tmp_file% ^| find "Volume"`) do (
+    if "%%i:" EQU "%~d0" exit /b 4
+)
+for /f "usebackq" %%i in (`diskpart /s %tmp_file% ^| find "Removable"`) do (
+    exit /b 5
+)
 exit /b
 
 
