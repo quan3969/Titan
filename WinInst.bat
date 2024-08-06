@@ -1,8 +1,8 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For Windows Images install.
-rem By Q3aN 240502
-set ver=v03
+rem By Q3aN 240805
+set ver=v04
 
 rem Future feature:
 rem 1. Auto OOBE
@@ -69,6 +69,7 @@ rem ****************************************************************************
 rem Add answer file to target disk
 rem %~1: Target Volume
 :Answer_File
+if not exist %~1:\Windows exit /b
 echo ^>
 echo ^> Answer file avaliavle:
 echo ^>  1. Audit Mode
@@ -80,8 +81,6 @@ if not exist %~1:\Windows\Panther mkdir %~1:\Windows\Panther
 if /i "%sel_answer%" EQU "1" call :Gen_Unattend_Audit "%~1:\Windows\Panther\unattend.xml"
 if /i "%sel_answer%" EQU "2" call :Gen_Unattend_User "%~1:\Windows\Panther\unattend.xml"
 if /i "%sel_answer%" EQU "3" call :Gen_Unattend_Admin "%~1:\Windows\Panther\unattend.xml"
-echo ^>
-echo ^> Answer file added: %~1:\Windows\Panther\unattend.xml
 exit /b
 
 
@@ -96,11 +95,11 @@ for /f "usebackq delims=" %%i in (`echo %~1 ^| find /v ".swm"`) do (
     set is_swm_img=0
 )
 if "%is_swm_img%" EQU "1" (
-    dism /Apply-Image /ImageFile:"%swm_name%.swm" /SWMFile:"%swm_name%*.swm" /Index:1 /ApplyDir:W:\
+    dism /Apply-Image /ImageFile:"%swm_name%.swm" /SWMFile:"%swm_name%*.swm" /Index:1 /ApplyDir:%win_vol%:\
 ) else (
-    dism /Apply-Image /ImageFile:"%~1" /Index:1 /ApplyDir:W:\
+    dism /Apply-Image /ImageFile:"%~1" /Index:1 /ApplyDir:%win_vol%:\
 )
-bcdboot W:\Windows
+bcdboot %win_vol%:\Windows
 echo ^>
 echo ^> Apply completed!
 exit /b
@@ -222,7 +221,6 @@ rem Generate scirpt file dp_script.txt for diskpart in current folder
 rem Use dp_script.txt to format a selected disk
 rem %~1: Target Disk number
 :Format_Disk
-setLocal enableDelayedExpansion
 echo select disk %~1 > %tmp_file%
 echo clean >> %tmp_file%
 echo convert gpt >> %tmp_file%
@@ -242,7 +240,6 @@ echo gpt attributes=0x8000000000000001 >> %tmp_file%
 echo list volume >> %tmp_file%
 echo exit >> %tmp_file%
 diskpart /s %tmp_file%
-endLocal
 exit /b
 
 
@@ -250,7 +247,6 @@ rem ****************************************************************************
 rem Generate Unattend file to enable Administrator account
 rem %~1 Output File
 :Gen_Unattend_Admin
-setLocal enableDelayedExpansion
 echo ^<?xml version="1.0" encoding="utf-8"?^> > %~1
 echo ^<unattend xmlns="urn:schemas-microsoft-com:unattend"^> >> %~1
 echo     ^<settings pass="oobeSystem"^> >> %~1
@@ -267,7 +263,8 @@ echo             ^</OOBE^> >> %~1
 echo         ^</component^> >> %~1
 echo     ^</settings^> >> %~1
 echo ^</unattend^> >> %~1
-endLocal
+echo ^>
+echo ^> Answer file added: %~1
 exit /b
 
 
@@ -275,7 +272,6 @@ rem ****************************************************************************
 rem Generate Unattend file to enable Local account
 rem %~1 Output File
 :Gen_Unattend_User
-setLocal enableDelayedExpansion
 echo ^<?xml version="1.0" encoding="utf-8"?^> > "%~1"
 echo ^<unattend xmlns="urn:schemas-microsoft-com:unattend"^> >> "%~1"
 echo     ^<settings pass="oobeSystem"^> >> "%~1"
@@ -293,7 +289,8 @@ echo             ^<SystemLocale^>en-US^</SystemLocale^> >> "%~1"
 echo         ^</component^> >> "%~1"
 echo     ^</settings^> >> "%~1"
 echo ^</unattend^> >> "%~1"
-endLocal
+echo ^>
+echo ^> Answer file added: %~1
 exit /b
 
 
@@ -301,7 +298,6 @@ rem ****************************************************************************
 rem Generate Unattend file to make system boot to Audit mode
 rem %~1 Output File
 :Gen_Unattend_Audit
-setLocal enableDelayedExpansion
 echo ^<?xml version="1.0" encoding="utf-8"?^> > "%~1"
 echo ^<unattend xmlns="urn:schemas-microsoft-com:unattend"^> >> "%~1"
 echo     ^<settings pass="oobeSystem"^> >> "%~1"
@@ -312,5 +308,6 @@ echo             ^</Reseal^> >> "%~1"
 echo         ^</component^> >> "%~1"
 echo     ^</settings^> >> "%~1"
 echo ^</unattend^> >> "%~1"
-endLocal
+echo ^>
+echo ^> Answer file added: %~1
 exit /b
