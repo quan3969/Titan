@@ -1,15 +1,19 @@
 @echo off
 setLocal enableDelayedExpansion
-rem Fine BIOS update files and generate script for easy update.
-rem By Q3aN 240409
-set ver=v02
+rem Find BIOS update files and generate script for easy update.
+rem By Q3aN 240821
+rem Todo:
+rem  1. add ARL
+rem  2. update exe generate
+rem  3. use py for dnx
+set ver=v03
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Generate %ver%
 
-set "LNL_ID=JZR VAJ ALY RHF"
+set "LNL_ID=JZR VAJ ALY RHF AMA"
 set "MTL_ID=RHA RHB RHD"
 set "RPL_ID=RGU RGS RGT RHC"
 set "ADL_ID=RGG RGE RGF RGL RGM RGL"
@@ -21,11 +25,11 @@ set "DnX_MTL=Intel(R) MeteorLake P Chipset - DnX Recovery Image"
 set "DnX_RPL=Intel(R) AlderLake P Chipset - DnX Recovery Image"
 
 set "AFU_Para1=/p /b /n /capsule /q"
-set "Para1_Support=MTL"
+set "Para1_Support=MTL LNL"
 set "AFU_Para2=/p /b /n /r /e /capsule /q"
 set "Para2_Support=RPL ADL TGL CML"
 set "AFU_Para3=/p /b /n /meul /capsule /q"
-set "Para3_Support=LNL"
+set "Para3_Support="
 
 set ID_PW=
 for %%a in (
@@ -186,11 +190,25 @@ rem %~1: FPT name
 rem %~2: BIN name
 rem %~3: Output name
 :Out_Fpt
-setLocal enableDelayedExpansion
 echo echo -off> %~3
-echo cls>> %~3
+echo echo " ">> %~3
+echo echo =====================================================>> %~3
+echo echo ^^^>>> %~3
 echo.>> %~3
 echo set -v BiosFile %~2>> %~3
+echo set -v Fpt %~1>> %~3
+echo set -v sFpt SamsungFpt.efi>> %~3
+echo.>> %~3
+echo if not exist %%BiosFile%% then>> %~3
+echo     goto NotFound>> %~3
+echo endif>> %~3
+echo if exist %%sFpt%% and ZZ%%1 == ZZ then>> %~3
+echo     %%sFpt%% -f %%BiosFile%% -unlock>> %~3
+echo     goto End>> %~3
+echo endif>> %~3
+echo if not exist %%Fpt%% then>> %~3
+echo     goto NotFound>> %~3
+echo endif>> %~3
 echo.>> %~3
 echo for %%n in 0 1 2 3 4 5 6 7 >> %~3
 echo     if exist fs%%n:\EFI\Microsoft\Boot\bootmgr.efi then>> %~3
@@ -205,40 +223,40 @@ echo if exist fs%%DiskNo%%:\BIOS then>> %~3
 echo     rm -q fs%%DiskNo%%:\BIOS ^> nul>> %~3
 echo endif>> %~3
 echo mkdir fs%%DiskNo%%:\BIOS ^> nul>> %~3
-echo cp -q %%cwd%%\%~1 fs%%DiskNo%%:\BIOS\ ^> nul>> %~3
+echo cp -q %%cwd%%\%%Fpt%% fs%%DiskNo%%:\BIOS\ ^> nul>> %~3
 echo cp -q %%cwd%%\%%BiosFile%% fs%%DiskNo%%:\BIOS\ ^> nul>> %~3
-echo echo =====================================================>> %~3
-echo echo = Now flashing: %%BiosFile%%>> %~3
-echo echo =====================================================>> %~3
+echo echo ^^^> Now flashing: %%BiosFile%%>> %~3
 echo echo " ">> %~3
-echo fs%%DiskNo%%:\BIOS\%~1 -f fs%%DiskNo%%:\BIOS\%%BiosFile%%>> %~3
+echo fs%%DiskNo%%:\BIOS\%%Fpt%% -f fs%%DiskNo%%:\BIOS\%%BiosFile%%>> %~3
 echo rm -q fs%%DiskNo%%:\BIOS\%%BiosFile%% ^> nul>> %~3
-echo echo =====================================================>> %~3
-echo echo = Reboot now, please wait...>> %~3
-echo echo =====================================================>> %~3
-echo echo " ">> %~3
-echo fs%%DiskNo%%:\BIOS\%~1 -greset ^> nul>> %~3
-echo goto End>> %~3
+echo goto Greset>> %~3
 echo.>> %~3
 echo :NotFoundDisk>> %~3
-echo echo =====================================================>> %~3
-echo echo = Now flashing: %%BiosFile%%>> %~3
-echo echo = Please don't unlpug usb disk...>> %~3
-echo echo =====================================================>> %~3
-echo echo " ">> %~3
-echo %~1 -f %%BiosFile%%>> %~3
-echo echo =====================================================>> %~3
-echo echo = Reboot now, please wait...>> %~3
-echo echo =====================================================>> %~3
-echo echo " ">> %~3
-echo %~1 -greset ^> nul>> %~3
+echo echo ^^^> Now flashing: %%BiosFile%%>> %~3
+echo echo ^^^> Please don't unlpug usb disk...>> %~3
+echo echo ^^^>>> %~3
+echo %%Fpt%% -f %%BiosFile%%>> %~3
+echo.>> %~3
+echo :Greset>> %~3
+echo echo ^^^> Reboot now, please wait...>> %~3
+echo echo ^^^>>> %~3
+echo if exist fs%%DiskNo%%:\BIOS\%%Fpt%% then>> %~3
+echo     fs%%DiskNo%%:\BIOS\%%Fpt%% -greset ^> nul>> %~3
+echo else>> %~3
+echo     %%Fpt%% -greset ^> nul>> %~3
+echo endif>> %~3
 echo goto End>> %~3
 echo.>> %~3
+echo :NotFound>> %~3
+echo echo ^^^> Fail: Fpt or BIOS file not found>> %~3
+echo echo ^^^>>> %~3
+echo.>> %~3
 echo :End>> %~3
+echo echo =====================================================>> %~3
+echo echo " ">> %~3
 echo echo -on>> %~3
 echo ^>
 echo ^> %~3
-endLocal
 exit /b 0
 
 
