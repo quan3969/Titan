@@ -1,12 +1,11 @@
 @echo off
 setLocal enableDelayedExpansion
 rem Find BIOS update files and generate script for easy update.
-rem By Q3aN 240821
+rem By Q3aN 240826
 rem Todo:
 rem  1. add ARL
-rem  2. update exe generate
-rem  3. use py for dnx
-set ver=v03
+rem  2. use py for dnx
+set ver=v04
 
 echo.
 echo =====================================================
@@ -63,19 +62,33 @@ rem Find the BIOS EXE file, generate script according to platform
 setLocal enableDelayedExpansion
 for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
     set file_name=%%i
-    for %%a in ( %ID_PW% ) do (
-        set file_id_pw=%%a
-        if "!file_name:~7,3!" EQU "!file_id_pw:~0,3!" (
-            for /f "usebackq tokens=2 delims=-" %%x in (`echo !file_id_pw!`) do ( 
-                set file_pw=%%x
-                if "!file_name:~4,1!" NEQ "E" (
-                    set out_name=!file_name:~4,3!_EXE.bat
-                ) else (
-                    set out_name=!file_name:~11,-4!_EXE.bat
+    for /f "delims=" %%j in ('where !file_name!') do ( set file_path=%%j )
+    set file_path=!file_path:\=\\!
+    for /f "usebackq" %%k in (`wmic datafile where name^="!file_path!" get version ^| find ".0"`) do ( set file_ver=%%k )
+    if !file_ver! GTR 4.43.0.0 (
+        if "!file_name:~4,1!" NEQ "E" (
+            set out_name=!file_name:~4,3!_EXE.bat
+        ) else (
+            set out_name=!file_name:~11,-4!_EXE.bat
+        )
+        echo !file_name! /eu /afu /op:w > !out_name!
+        echo ^>
+        echo ^> !out_name!
+    ) else (
+        for %%a in ( %ID_PW% ) do (
+            set file_id_pw=%%a
+            if "!file_name:~7,3!" EQU "!file_id_pw:~0,3!" (
+                for /f "usebackq tokens=2 delims=-" %%x in (`echo !file_id_pw!`) do ( 
+                    set file_pw=%%x
+                    if "!file_name:~4,1!" NEQ "E" (
+                        set out_name=!file_name:~4,3!_EXE.bat
+                    ) else (
+                        set out_name=!file_name:~11,-4!_EXE.bat
+                    )
+                    echo !file_name! /eu:!file_pw! /op:w > !out_name!
+                    echo ^>
+                    echo ^> !out_name!
                 )
-                echo !file_name! /eu:!file_pw! > !out_name!
-                echo ^>
-                echo ^> !out_name!
             )
         )
     )
