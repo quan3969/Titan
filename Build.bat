@@ -1,23 +1,76 @@
 @echo off
 setLocal enableDelayedExpansion
-rem By Q3aN 240401
-set ver=v03
+rem For AMI AptioV project build.
+rem By Q3aN 240829
+set ver=v01
 
 echo.
 echo =====================================================
 echo ^>
-echo ^> Welcome to BuildGather %ver%
+echo ^> Welcome to Build %ver%
+set TOOLS_DIR=C:\Aptio_5.x_TOOLS_JRE_53\BuildTools
+set PYTHON_COMMAND=py
+set CHECKSUM_FILE=checksum.json
+set path=%cd%;%path%;%TOOLS_DIR%
+set BuildLog=Build.log
+set VEB=
+for /f "delims=." %%v in ('dir /b *.veb') do ( set "VEB=%%v" )
+if /i "%~1" EQU "/c" ( set "in_para1=c" )
+if /i "%~1" EQU "-c" ( set "in_para1=c" )
+if /i "%~1" EQU "c"  ( set "in_para1=c" )
+if /i "%~1" EQU "/g" ( set "in_para1=g" )
+if /i "%~1" EQU "-g" ( set "in_para1=g" )
+if /i "%~1" EQU "g"  ( set "in_para1=g" )
+if "%in_para1%" EQU "c" (
+    call :Clean
+) else if "%in_para1%" EQU "g" (
+    call :Gather
+) else (
+    call :BuildAll
+    echo ^>
+    echo ^> Press any key to gather build files ...
+    pause >nul
+    call :Gather
+)
+echo ^>
+echo =====================================================
+echo.
 
+endLocal
+exit /b 0
+
+
+rem ****************************************************************************
+rem Gather build files
+:Clean
+make clean
+for /f "delims=" %%d in ('dir /ad/b/s /o-n') do @rd %%d 2>nul
+exit /b 0
+
+
+rem ****************************************************************************
+rem Gather build files
+:Gather
 call :Save_Buildfiles
 call :Do_Ending %errorlevel%
+exit /b 0
 
-echo ^>
-echo =====================================================
-echo.
 
-if "%end_pause%" EQU "1" ( pause )
-endLocal
-exit /b
+rem ****************************************************************************
+rem Build all, save logs and calulate duration
+:BuildAll
+set begin=%time%
+powershell "make rebuild 2>&1 | Add-Content %BuildLog% -Passthru"
+set end=%time%
+set /a begin_sec=(%begin:~0,2%)*3600 + (1%begin:~3,2% %% 100)*60 + (1%begin:~6,2% %% 100)
+set /a end_sec=(%end:~0,2%)*3600 + (1%end:~3,2% %% 100)*60 + (1%end:~6,2% %% 100)
+set /a spend=%end_sec% - %begin_sec%
+set /a spend_min=%spend% / 60
+set /a spend_sec=%spend% - %spend_min%*60
+set /a out_min=spend_min + 100
+set /a out_sec=spend_sec + 100
+powershell "echo '' 'Build total time: 00:%out_min:~1%:%out_sec:~1%' | Add-Content %BuildLog% -Passthru"
+exit /b 0
 
 
 rem ****************************************************************************
@@ -63,10 +116,8 @@ rem %~1: Ending reason:
 rem        0 - Success
 rem        6 - Project not complied yet
 :Do_Ending
-set end_pause=1
 if "%~1" EQU "0" ( echo ^>
     echo ^> Success
-    set end_pause=0
 ) else if "%~1" EQU "6" ( echo ^>
     echo ^> Project may not be compiled.
 )
@@ -130,8 +181,7 @@ rem ****************************************************************************
 rem Save build output files for AMI Project
 rem %~1: Rom name
 :Save_AMI
-setLocal enableDelayedExpansion
-echo.
+echo ^>
 echo ^> Gather for AMI project.
 if exist %~1 (del /q /s %~1\*) else (mkdir %~1)
 if exist Build.log xcopy Build.log %~1\
@@ -150,5 +200,4 @@ for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| findstr /i /c:"B
     if exist %%i xcopy %%i %~1\
 )
 explorer %~dp0%~1
-endLocal
 exit /b
