@@ -1,1 +1,0 @@
-for /f "usebackq delims=" %%d in (`"dir /ad/b/s | sort /r"`) do rd "%%d"
