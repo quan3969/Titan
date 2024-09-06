@@ -1,8 +1,8 @@
 @echo off
 setLocal enableDelayedExpansion
 rem All in one script for windows customization
-rem By Q3aN 240308
-set ver=v03
+rem By Q3aN 240905
+set ver=v04
 
 call :AskAdmin
 
@@ -11,21 +11,23 @@ echo =====================================================
 echo ^>
 echo ^> Welcome to Turtle %ver%
 
-@REM :: Win11
-@REM call :Set_LagecyMenu     1
-if %errorlevel% EQU 0 ( call :Set_LagecyMenu     1 )
-:: if %errorlevel% EQU 0 ( call :Set_Language "en-US" )
+rem
+rem Win11
+rem
+if %errorlevel% EQU 0 ( call :Set_LagecyMenu      1 )
 
-@REM :: Win10
-:: if %errorlevel% EQU 0 ( call :Set_AntiSpyWare    0 )
-
-@REM :: Win10/Win11
-if %errorlevel% EQU 0 ( call :Set_ShowSeconds    1 )
-if %errorlevel% EQU 0 ( call :Set_AutoUpdate     0 )
-if %errorlevel% EQU 0 ( call :Set_UsbPrompt      0 )
-if %errorlevel% EQU 0 ( call :Set_RemoteDesktop  1 )
-:: if %errorlevel% EQU 0 ( call :Set_ShowHidden     1 )
-:: if %errorlevel% EQU 0 ( call :Set_Recovery       0 )
+rem
+rem Win10 / Win11
+rem
+if %errorlevel% EQU 0 ( call :Set_AntiSpyWare     0 )
+if %errorlevel% EQU 0 ( call :Set_ShowSeconds     1 )
+if %errorlevel% EQU 0 ( call :Set_AutoUpdate      0 )
+if %errorlevel% EQU 0 ( call :Set_UsbPrompt       0 )
+if %errorlevel% EQU 0 ( call :Set_RemoteDesktop   1 )
+if %errorlevel% EQU 0 ( call :Set_ShowHidden      1 )
+:: if %errorlevel% EQU 0 ( call :Set_Recovery        0 )
+:: if %errorlevel% EQU 0 ( call :Set_AutoAdminLogon    )
+:: if %errorlevel% EQU 0 ( call :Set_Language  "en-US" )
 
 call :Do_Ending %errorlevel%
 
@@ -33,51 +35,139 @@ echo ^>
 echo =====================================================
 echo.
 
-if %errorlevel% EQU 5 exit /b
 endLocal
-pause
+if %errorlevel% NEQ 5 pause
 exit /b
 
 
 rem ****************************************************************************
-rem Set current OS language
-rem %~1: language to set "en-US", "zh-CN", "ko-KR"
-:Set_Language
-rem Local Experience Packs (LXPs)
-set lpxs_added=0
-for /f "usebackq delims=" %%i in (`Dism /Online /English /Get-Packages ^| find "LanguagePack" ^| find "%~1"`) do (
-    if exist %bat_dir%\etc\%~1\Microsoft-Windows-Client-Language-Pack_x64_%~1.cab ( set lpxs_added=1 )
+rem Set_AutoAdminLogon
+:Set_AutoAdminLogon
+echo ^>
+echo ^>  Auto Admin Logon:
+set cfg_exist=0
+set userName=
+set password=
+set cfg_required=0
+for /f "tokens=3" %%i in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" 2^>nul ^| find "AutoAdminLogon"') do (
+    if "%%i" equ "0x1" ( set "cfg_exist=1" )
 )
-if %lpxs_added% EQU 0 (
-    Dism /Online /Add-Package /PackagePath:%bat_dir%\etc\%~1\Microsoft-Windows-Client-Language-Pack_x64_%~1.cab
-)
-for /f "usebackq tokens=2 delims=:" %%i in (`DISM /Online /English /Get-CapabilityInfo /CapabilityName:Language.Basic~~~%~1~0.0.1.0 ^| find "State"`) do (
-    if /i "%%i"==" Not Present" ( if exist %bat_dir%\etc\%~1\Microsoft-Windows-LanguageFeatures-Basic-%~1-Package~31bf3856ad364e35~amd64~~.cab (
-            Dism /Online /Add-capability /CapabilityName:"Language.Basic~~~%~1~0.0.1.0" /source:%bat_dir%\etc\%~1
-    ))
-)
-for /f "usebackq tokens=2 delims=:" %%i in (`powershell Get-WinUserLanguageList ^| find "LanguageTag"`) do (
-    if /i "%%i"==" en-US" ( 
-        powershell "$LangList = Get-WinUserLanguageList; $LangList.Add('%~1'); Set-WinUserLanguageList $LangList -force"
+if "%cfg_exist%" EQU "1" (
+    echo ^>   Config exist.
+    for /f "tokens=3" %%i in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" 2^>nul ^| find "DefaultUserName"') do (
+        echo ^>    UserName: %%i
     )
+    for /f "tokens=3" %%i in ('reg query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" 2^>nul ^| find "DefaultPassword"') do (
+        echo ^>    Password: %%i
+    )
+    set choice=
+    set /p choice=" >   Delete it? (y/N): "
+    if /i "!choice!"=="Y" ( set "cfg_required=1" )
+    if "!cfg_required!" equ "0" (
+        echo ^> Cancel.
+        exit /b 0
+    )
+    reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "AutoAdminLogon" /f >nul
+    reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "DefaultUserName" /f >nul
+    reg delete "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "DefaultPassword" /f >nul
+    echo ^>   Deleted.
+) else (
+    set "cfg_required=1"
+    set /p userName="  >    UserName: "
+    if /i "!userName!" equ "" ( set "cfg_required=0" )
+    set /p password="  >    Password: "
+    if /i "!password!" equ "" ( set "cfg_required=0" )
+    set choice=
+    set /p choice=" >   Config above? (y/N): "
+    if /i "!choice!" neq "Y" ( set "cfg_required=0" )
+    if "!cfg_required!" equ "0" (
+        echo ^>   Cancel.
+        exit /b 0
+    )
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "AutoAdminLogon" /t "REG_DWORD" /d "1" /f >nul
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "DefaultUserName" /t "REG_SZ" /d "!userName!" /f >nul
+    reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v "DefaultPassword" /t "REG_SZ" /d "!password!" /f >nul
+    echo ^>   Done.
 )
-rem Features On Demand (FODs)
-rem Download and apply if need
-set culture_setted=0
+exit /b 0
+
+
+rem ****************************************************************************
+rem Set current OS language
+rem  %~1: language to set "en-US", "zh-CN", "ko-KR"
+rem
+rem 1. Make sure all config set correctly:
+rem  - powershell Get-WinUserLanguageList
+rem  - powershell Get-Culture
+rem  - powershell Get-WinSystemLocale
+rem
+rem 2. Necessarily cab package:
+rem  - Microsoft-Windows-Client-LanguagePack-Package-amd64-en-us.esd
+rem  - Microsoft-Windows-LanguageFeatures-Basic-en-us-Package-amd64.cab
+rem
+rem 3. Different OS should use different cab packages:
+rem  - Download from UUPs
+rem
+:Set_Language
+echo ^>
+echo ^>  Set Language %~1:
+set os_ver=
+for /f "tokens=3 delims=." %%i in ('ver') do (
+    set os_ver=%%i
+)
+rem
+rem Local Experience Packs (LXPs)
+rem
+set lpxs_required=1
 for /f "usebackq delims=" %%i in (`powershell Get-Culture ^| find "%~1"`) do (
-    set culture_setted=1
+    set "lpxs_required=0"
 )
-if %culture_setted% EQU 0 (
+for /f "usebackq delims=" %%i in (`Dism /Online /English /Get-Packages ^| find "LanguagePack" ^| find "%~1"`) do (
+    set "lpxs_required=0"
+)
+if not exist "%bat_dir%\etc\%os_ver%\%~1\Microsoft-Windows-Client-LanguagePack-Package-amd64-%~1.esd" (
+    set "lpxs_required=0"
+)
+if %lpxs_required% EQU 1 (
+    Dism /Online /Add-Package /PackagePath:%bat_dir%\etc\%os_ver%\%~1\Microsoft-Windows-Client-LanguagePack-Package-amd64-%~1.esd
     rem Add one time run to next boot
-    reg add "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce" /v "SetLang" /t REG_SZ /d "powershell Set-WinUILanguageOverride -Language %~1; Restart-Computer" /f
+    reg add "HKEY_LOCAL_MACHINE\Software\Microsoft\Windows\CurrentVersion\RunOnce" /v "SetLang" /t REG_SZ /d "powershell Set-WinUILanguageOverride -Language %~1; Restart-Computer" /f >nul
+    echo ^>   LXPs done.
+) else (
+    echo ^>   LXPs skip.
 )
+rem
+rem Features On Demand (FODs)
+rem
+set fods_required=1
+for /f "usebackq tokens=2 delims=:" %%i in (`powershell Get-WinUserLanguageList ^| find "LanguageTag"`) do (
+    if /i "%%i" EQU " en-US" ( set "fods_required=0" )
+)
+for /f "usebackq tokens=2 delims=:" %%i in (`Dism /Online /English /Get-CapabilityInfo /CapabilityName:Language.Basic~~~%~1~0.0.1.0 ^| find "State"`) do (
+    if /i "%%i" EQU " Installed" ( set "fods_required=0" )
+)
+if not exist "%bat_dir%\etc\%os_ver%\%~1\Microsoft-Windows-LanguageFeatures-Basic-%~1-Package-amd64.cab" (
+    set fods_required=0
+)
+if %fods_required% EQU 1 (
+    Dism /Online /Add-capability /CapabilityName:"Language.Basic~~~%~1~0.0.1.0" /source:%bat_dir%\etc\%os_ver%\%~1
+    powershell "$LangList = Get-WinUserLanguageList; $LangList.Add('%~1'); Set-WinUserLanguageList $LangList -force" >nul 2>&1
+    echo ^>   FODs done.
+) else (
+    echo ^>   FODs skip.
+)
+rem
 rem UIIntl (intl.cpl)
-set locale_setted=0
+rem
+set intl_required=1
 for /f "usebackq delims=" %%i in (`powershell Get-WinSystemLocale ^| find "%~1"`) do (
-    set locale_setted=1
+    set intl_required=0
 )
-if %locale_setted% EQU 0 (
+if %intl_required% EQU 1 (
     powershell Set-WinSystemLocale -SystemLocale %~1
+    echo ^>   Intl done.
+) else (
+    echo ^>   Intl skip.
 )
 exit /b
 
@@ -122,105 +212,92 @@ rem ****************************************************************************
 rem bcdedit /set {current} recoveryenabled no
 rem Disable system auto repair after abnormal shutdown
 :Set_Recovery
-setLocal enableDelayedExpansion
 set val=0
 for /f "tokens=2" %%i in ('bcdedit ^| find "recoveryenabled"') do (
     if /i "%%i"=="Yes" set val=1
 )
 if "%~1" EQU "0" if %val% EQU 1 (
     bcdedit /set {current} recoveryenabled no >nul
-    echo   Recovery:           1 -^> 0
-    endLocal
+    echo ^>  Recovery:           1 -^> 0
     exit /b
 )
 if "%~1" EQU "1" if %val% EQU 0 (
     bcdedit /set {current} recoveryenabled yes >nul
-    echo   Recovery:           0 -^> 1
-    endLocal
+    echo ^>  Recovery:           0 -^> 1
     exit /b
 )
-echo   Recovery:           %val%
-endLocal
+echo ^>  Recovery:           %val%
 exit /b
 
 
-:: Set menu menu style for Win11
+rem ****************************************************************************
+rem Set menu menu style for Win11
 :Set_LagecyMenu
-setLocal enableDelayedExpansion
 set val=0
-for /f "tokens=6 delims=\" %%i in ('reg query "HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}"') do (
+for /f "tokens=6 delims=\" %%i in ('reg query "HKEY_CURRENT_USER\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}" 2^>nul') do (
     if "%%i"=="InprocServer32" ( set val=1 )
 )
 if "%~1" EQU "0" if %val% EQU 1 (
     reg delete "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}" /f >nul
-    echo   Lagecy menu:        1 -^> 0
-    endLocal
+    echo ^>  Lagecy menu:        1 -^> 0
     exit /b 0
 )
 if "%~1" EQU "1" if %val% EQU 0 (
     reg add "HKCU\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" /f /ve >nul
-    echo   Lagecy menu:        0 -^> 1
-    endLocal
+    echo ^>  Lagecy menu:        0 -^> 1
     exit /b 0
 )
-echo   Lagecy menu:        %val%
-endLocal
+echo ^>  Lagecy menu:        %val%
 exit /b 0
 
 
-:: Set Show seconds in system Clock
+rem ****************************************************************************
+rem Set Show seconds in system Clock
 :Set_ShowSeconds
-setLocal enableDelayedExpansion
 set val=0
-for /f "tokens=3" %%i in ('reg query "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" ^| find "ShowSecondsInSystemClock"') do (
+for /f "tokens=3" %%i in ('reg query "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" 2^>nul ^| find "ShowSecondsInSystemClock"') do (
     if "%%i"=="0x1" set val=1
 )
 if "%~1" EQU "0" if %val% EQU 1 (
     reg delete "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowSecondsInSystemClock" /f >nul
-    echo   Show seconds:       1 -^> 0
-    endLocal
+    echo ^>  Show seconds:       1 -^> 0
     exit /b 0
 )
 if "%~1" EQU "1" if %val% EQU 0 (
     reg add "HKEY_CURRENT_USER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowSecondsInSystemClock" /t "REG_DWORD" /d "1" /f >nul
-    echo   Show seconds:       0 -^> 1
-    endLocal
+    echo ^>  Show seconds:       0 -^> 1
     exit /b 0
 )
-echo   Show seconds:       %val%
-endLocal
+echo ^>  Show seconds:       %val%
 exit /b 0
 
 
-:: Set Auto Windows Update
+rem ****************************************************************************
+rem Set Auto Windows Update
 :Set_AutoUpdate
-setLocal enableDelayedExpansion
 set val=1
-for /f "tokens=3" %%i in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" ^| find "NoAutoUpdate"') do (
+for /f "tokens=3" %%i in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" 2^>nul ^| find "NoAutoUpdate"') do (
     if "%%i"=="0x1" set val=0
 )
 if "%~1" EQU "0" if %val% EQU 1 (
     reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v "NoAutoUpdate" /t "REG_DWORD" /d "1" /f >nul
-    echo   Auto Update:        1 -^> 0
-    endLocal
+    echo ^>  Auto Update:        1 -^> 0
     exit /b 0
 )
 if "%~1" EQU "1" if %val% EQU 0 (
     reg delete "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v "NoAutoUpdate" /f >nul
-    echo   Auto Update:        0 -^> 1
-    endLocal
+    echo ^>  Auto Update:        0 -^> 1
     exit /b 0
 )
-echo   Auto Update:        %val%
-endLocal
+echo ^>  Auto Update:        %val%
 exit /b 0
 
 
-:: Set USB disk Auto play
+rem ****************************************************************************
+rem Set USB disk Auto play
 :Set_UsbPrompt
-setLocal enableDelayedExpansion
 set val=1
-for /f "tokens=3" %%i in ('reg query "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers" ^| find "DisableAutoplay"') do (
+for /f "tokens=3" %%i in ('reg query "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers" 2^>nul ^| find "DisableAutoplay"') do (
     if "%%i"=="0x1" set val=0
 )
 if "%~1" EQU "0" if %val% EQU 1 (
@@ -229,8 +306,7 @@ if "%~1" EQU "0" if %val% EQU 1 (
     reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\UserChosenExecuteHandlers\StorageOnArrival" /d "MSTakeNoAction" /f >nul
     reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlersDefaultSelection\CameraAlternate\ShowPicturesOnArrival" /d "MSTakeNoAction" /f >nul
     reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\UserChosenExecuteHandlers\CameraAlternate\ShowPicturesOnArrival" /d "MSTakeNoAction" /f >nul
-    echo   USB Prompt:         1 -^> 0
-    endLocal
+    echo ^>  USB Prompt:         1 -^> 0
     exit /b 0
 )
 if "%~1" EQU "1" if %val% EQU 0 (
@@ -239,91 +315,80 @@ if "%~1" EQU "1" if %val% EQU 0 (
     reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\UserChosenExecuteHandlers\StorageOnArrival" /d "MSPromptEachTime" /f >nul
     reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\EventHandlersDefaultSelection\CameraAlternate\ShowPicturesOnArrival" /d "MSPromptEachTime" /f >nul
     reg add "HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\AutoplayHandlers\UserChosenExecuteHandlers\CameraAlternate\ShowPicturesOnArrival" /d "MSPromptEachTime" /f >nul
-    echo   USB Prompt:         0 -^> 1
-    endLocal
+    echo ^>  USB Prompt:         0 -^> 1
     exit /b 0
 )
-echo   USB Prompt:         %val%
-endLocal
+echo ^>  USB Prompt:         %val%
 exit /b 0
 
 
-:: Set Remote desktop
+rem ****************************************************************************
+rem Set Remote desktop
 :Set_RemoteDesktop
-setLocal enableDelayedExpansion
 set val=1
-for /f "tokens=3" %%i in ('reg query "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" ^| find "fDenyTSConnections"') do (
+for /f "tokens=3" %%i in ('reg query "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" 2^>nul ^| find "fDenyTSConnections"') do (
     if "%%i"=="0x1" set val=0
 )
 if "%~1" EQU "0" if %val% EQU 1 (
     reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v "fDenyTSConnections" /t "REG_DWORD" /d 1 /f >nul
     reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v "updateRDStatus" /t "REG_DWORD" /d 0 /f >nul
-    netsh advfirewall firewall set rule group="remote desktop" new enable=No
-    echo   Remote Desktop:     1 -^> 0
-    endLocal
+    netsh advfirewall firewall set rule group="remote desktop" new enable=No >nul
+    echo ^>  Remote Desktop:     1 -^> 0
     exit /b 0
 )
 if "%~1" EQU "1" if %val% EQU 0 (
     reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v "fDenyTSConnections" /t "REG_DWORD" /d 0 /f >nul
     reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server" /v "updateRDStatus" /t "REG_DWORD" /d 1 /f >nul
     reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v "UserAuthentication" /t "REG_DWORD" /d 1 /f >nul
-    netsh advfirewall firewall set rule group="remote desktop" new enable=Yes
-    echo   Remote Desktop:     0 -^> 1
-    endLocal
+    netsh advfirewall firewall set rule group="remote desktop" new enable=Yes >nul
+    echo ^>  Remote Desktop:     0 -^> 1
     exit /b 0
 )
-echo   Remote Desktop:     %val%
-endLocal
+echo ^>  Remote Desktop:     %val%
 exit /b 0
 
 
-:: Set AntiSpyWare
+rem ****************************************************************************
+rem Set AntiSpyWare
 :Set_AntiSpyWare
-setLocal enableDelayedExpansion
 set val=1
-for /f "tokens=3" %%i in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender" ^| find "DisableAntiSpyware"') do (
+for /f "tokens=3" %%i in ('reg query "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender" 2^>nul ^| find "DisableAntiSpyware"') do (
     if "%%i"=="0x1" set val=0
 )
 if "%~1" EQU "0" if %val% EQU 1 (
     reg add "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableAntiSpyware" /t "REG_DWORD" /d "1" /f >nul
-    echo   AntiSpyWare:        1 -^> 0
-    endLocal
+    echo ^>  AntiSpyWare:        1 -^> 0
     exit /b 0
 )
 if "%~1" EQU "1" if %val% EQU 0 (
     reg delete "HKEY_LOCAL_MACHINE\SOFTWARE\Policies\Microsoft\Windows Defender" /v "DisableAntiSpyware" /f >nul
-    echo   AntiSpyWare:        0 -^> 1
-    endLocal
+    echo ^>  AntiSpyWare:        0 -^> 1
     exit /b 0
 )
-echo   AntiSpyWare:        %val%
-endLocal
+echo ^>  AntiSpyWare:        %val%
 exit /b 0
 
 
-:: Set Show Hidden items and file exentions
+rem ****************************************************************************
+rem Set Show Hidden items and file exentions
 :Set_ShowHidden
-setLocal enableDelayedExpansion
 set val=1
-for /f "tokens=3" %%i in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" ^| find "HideFileExt"') do (
+for /f "tokens=3" %%i in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" 2^>nul ^| find "HideFileExt"') do (
     if "%%i"=="0x1" set val=0
 )
 if "%~1" EQU "0" if %val% EQU 1 (
     reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "Hidden" /t "REG_DWORD" /d 2 /f >nul
     reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "HideFileExt" /t "REG_DWORD" /d 1 /f >nul
     reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "LaunchTo" /t "REG_DWORD" /d 2 /f >nul
-    echo   Show Hidden:        1 -^> 0
-    endLocal
+    echo ^>  Show Hidden:        1 -^> 0
     exit /b 0
 )
 if "%~1" EQU "1" if %val% EQU 0 (
     reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "Hidden" /t "REG_DWORD" /d 1 /f >nul
     reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "HideFileExt" /t "REG_DWORD" /d 0 /f >nul
     reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "LaunchTo" /t "REG_DWORD" /d 1 /f >nul
-    echo   Show Hidden:        0 -^> 1
-    endLocal
+    echo ^>  Show Hidden:        0 -^> 1
     exit /b 0
 )
-echo   Show Hidden:        %val%
-endLocal
+echo ^>  Show Hidden:        %val%
 exit /b 0
