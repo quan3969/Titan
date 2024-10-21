@@ -1,30 +1,29 @@
 @echo off
 setLocal enableDelayedExpansion
 rem Find BIOS update files and generate script for easy update.
-rem By Q3aN 240826
-rem Todo:
-rem  1. add ARL
-rem  2. use py for dnx
-set ver=v04
+rem By Q3aN 241010
+set ver=v05
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Generate %ver%
 
-set "LNL_ID=JZR VAJ ALY RHF AMA"
+set "ARL_ID=RHH"
+set "LNL_ID=JZR VAJ ALY RHF AMA RHG"
 set "MTL_ID=RHA RHB RHD"
 set "RPL_ID=RGU RGS RGT RHC"
 set "ADL_ID=RGG RGE RGF RGL RGM RGL"
 set "TGL_ID=RFX RFW"
 set "CML_ID=RFG"
 
+set "DnX_ARL=Intel(R) MeteorLake P and ArrowLake P Chipsets - DnX Recovery Image"
 set "DnX_LNL=Intel(R) LunarLake M Chipset - DnX Recovery Image"
 set "DnX_MTL=Intel(R) MeteorLake P Chipset - DnX Recovery Image"
 set "DnX_RPL=Intel(R) AlderLake P Chipset - DnX Recovery Image"
 
 set "AFU_Para1=/p /b /n /capsule /q"
-set "Para1_Support=MTL LNL"
+set "Para1_Support=MTL LNL ARL"
 set "AFU_Para2=/p /b /n /r /e /capsule /q"
 set "Para2_Support=RPL ADL TGL CML"
 set "AFU_Para3=/p /b /n /meul /capsule /q"
@@ -65,7 +64,16 @@ for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
     for /f "delims=" %%j in ('where !file_name!') do ( set file_path=%%j )
     set file_path=!file_path:\=\\!
     for /f "usebackq" %%k in (`wmic datafile where name^="!file_path!" get version ^| find ".0"`) do ( set file_ver=%%k )
-    if !file_ver! GTR 4.43.0.0 (
+    if !file_ver! GTR 4.44.0.0 (
+        if "!file_name:~4,1!" NEQ "E" (
+            set out_name=!file_name:~4,3!_EXE.bat
+        ) else (
+            set out_name=!file_name:~11,-4!_EXE.bat
+        )
+        echo !file_name! /eu /op:w > !out_name!
+        echo ^>
+        echo ^> !out_name!
+    ) else if !file_ver! GTR 4.43.0.0 (
         if "!file_name:~4,1!" NEQ "E" (
             set out_name=!file_name:~4,3!_EXE.bat
         ) else (
@@ -104,6 +112,9 @@ setLocal enableDelayedExpansion
 for /f "usebackq delims=" %%i in (`dir /b *.cap 2^>nul`) do (
     set File_Name=%%i
     set File_Platform=
+    for %%a in ( %ARL_ID% ) do (
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=ARL" )
+    )
     for %%a in ( %LNL_ID% ) do (
         if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=LNL" )
     )
@@ -152,14 +163,23 @@ rem ****************************************************************************
 rem Find the BIOS BIN file, check if DnX FW exist, generate DnX bat script
 rem Otherwise generate nsh script for Fpt flash
 :Gen_BIN
-setLocal enableDelayedExpansion
-for /f "usebackq delims=" %%i in (`dir /b DNX*.bin 2^>nul`) do (
+set DnxFwName=
+if exist ".\etc\config.ini" (
+    for /f "usebackq tokens=1* delims==" %%a in (`type ".\etc\config.ini" ^| find /v "#"`) do (
+        set "key=%%a"
+        set "value=%%b"
+        set "key=!key: =!"
+        set "value=!value: =!"
+        set "!key!=!value!"
+    )
     set DnxFwExist=1
-    set DnxFwName=%%i
 )
 for /f "usebackq delims=" %%i in (`dir /b *.bin 2^>nul`) do (
     set File_Name=%%i
     set File_Platform=
+    for %%a in ( %ARL_ID% ) do (
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=ARL" )
+    )
     for %%a in ( %LNL_ID% ) do (
         if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=LNL" )
     )
@@ -193,7 +213,6 @@ for /f "usebackq delims=" %%i in (`dir /b *.bin 2^>nul`) do (
         )
     )
 )
-endLocal
 exit /b 0
 
 
@@ -282,8 +301,9 @@ rem %~4: Output name
 rem Necessary files: E00JZR03C.BIN, DNXP_0x1.bin, mfit.exe, meu.exe
 rem mfit --layout "Intel(R) LunarLake M Chipset - DnX Recovery Image" --setvalues ManifestSigningUtilPlugin:SigningContainer:MeuToolPath="./meu.exe";DnxPlugin:Dnx:InputFile="./E00JZR03C.BIN" --build E00JZR03C_DnX.BIN
 :Out_DnX
-setLocal enableDelayedExpansion
-if "%~1" EQU "LNL" (
+if "%~1" EQU "ARL" (
+    set Mfit_Para=!DnX_ARL!
+) else if "%~1" EQU "LNL" (
     set Mfit_Para=!DnX_LNL!
 ) else if "%~1" EQU "MTL" (
     set Mfit_Para=!DnX_MTL!
@@ -295,24 +315,23 @@ if "%~1" EQU "LNL" (
 set Bin_For_DnX=%~3
 for /f "delims=." %%i in ('echo !Bin_For_DnX!') do ( set Bin_For_DnX=%%i_DnX.bin )
 echo @echo off > %~4
-echo mfit --layout "!Mfit_Para!" --setvalues ManifestSigningUtilPlugin:SigningContainer:MeuToolPath="./meu.exe";DnxPlugin:Dnx:InputFile="./%~3" --build !Bin_For_DnX! >> %~4
+echo .\etc\%~1\mfit --layout "!Mfit_Para!" --setvalues ManifestSigningUtilPlugin:SigningContainer:MeuToolPath=".\etc\meu.exe";DnxPlugin:Dnx:InputFile=".\%~3" --build !Bin_For_DnX! >> %~4
 echo del *.txt >> %~4
 echo del *.map >> %~4
 echo del *.log >> %~4
 echo del *.xml >> %~4
-echo dnxFwDownloader --command downloadfwos --flags 0 --fw_dnx %~2 --fw_image !Bin_For_DnX! >> %~4
+echo py .\etc\dnx_util.py .\etc\%~1\%~2 --flash .\!Bin_For_DnX! >> %~4
 echo del !Bin_For_DnX! >> %~4
 echo echo. >> %~4
 echo echo ===================================================== >> %~4
-echo echo Flash done! Press any key to reboot target system, or >> %~4
-echo echo close this windows. >> %~4
+echo echo Press any key to reboot, or close this windows. >> %~4
 echo echo. >> %~4
 echo pause >> %~4
-echo dnxFwDownloader --command startover --flags 9 >> %~4
-echo ^>
-echo ^> %~4
-echo dnxFwDownloader --command startover --flags 9 > ExitDnXMode.bat
-echo dnxFwDownloader --command readbootmedia --fw_dnx %~2 --path dump.bin --device spi --idx 0 --part 0 --start 0 --blocks 8192 > RomDump.bat
-echo pause >> RomDump.bat
-endLocal
+echo py .\etc\dnx_util.py .\etc\%~1\%~2 --exit >> %~4
+echo.>> %~4
+echo py .\etc\dnx_util.py .\etc\%~1\%~2 --exit > ExitDnXMode_%~1.bat
+echo @echo off > RomDump_%~1.bat
+echo py .\etc\dnx_util.py .\etc\%~1\%~2 --dump dump.bin >> RomDump_%~1.bat
+echo echo. >> RomDump_%~1.bat
+echo pause >> RomDump_%~1.bat
 exit /b 0
