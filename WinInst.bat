@@ -1,16 +1,15 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For Windows Images install.
-rem By Q3aN 240805
-set ver=v04
+rem By Q3aN 241121
+set ver=v05
 
 rem Future feature:
-rem 1. Auto OOBE
-rem 2. FFU backup and restore
+rem 1. FFU backup and restore
 
-set win_vol=W
-set sys_vol=S
-set rcy_vol=R
+set win_ltr=W
+set sys_ltr=S
+set rcy_ltr=R
 set tmp_file="%~dp0tmp.txt"
 set end_pause=0
 
@@ -24,7 +23,7 @@ if %errorlevel% EQU 0 ( call :Get_Target_Image )
 if %errorlevel% EQU 0 ( call :Get_Target_Disk )
 if %errorlevel% EQU 0 ( call :Format_Disk %sel_disk% )
 if %errorlevel% EQU 0 ( call :Appy_Image %sel_img% )
-if %errorlevel% EQU 0 ( call :Answer_File %win_vol% )
+if %errorlevel% EQU 0 ( call :Answer_File %win_ltr% )
 call :Do_Ending %errorlevel%
 
 echo ^>
@@ -76,7 +75,7 @@ echo ^>  1. Audit Mode
 echo ^>  2. Local User
 echo ^>  3. Admin User
 echo ^>
-set /p sel_answer="> Select to add: "
+set /p "sel_answer=> Select to add: "
 if not exist %~1:\Windows\Panther mkdir %~1:\Windows\Panther
 if /i "%sel_answer%" EQU "1" call :Gen_Unattend_Audit "%~1:\Windows\Panther\unattend.xml"
 if /i "%sel_answer%" EQU "2" call :Gen_Unattend_User "%~1:\Windows\Panther\unattend.xml"
@@ -95,11 +94,11 @@ for /f "usebackq delims=" %%i in (`echo %~1 ^| find /v ".swm"`) do (
     set is_swm_img=0
 )
 if "%is_swm_img%" EQU "1" (
-    dism /Apply-Image /ImageFile:"%swm_name%.swm" /SWMFile:"%swm_name%*.swm" /Index:1 /ApplyDir:%win_vol%:\
+    dism /Apply-Image /ImageFile:"%swm_name%.swm" /SWMFile:"%swm_name%*.swm" /Index:1 /ApplyDir:%win_ltr%:\
 ) else (
-    dism /Apply-Image /ImageFile:"%~1" /Index:1 /ApplyDir:%win_vol%:\
+    dism /Apply-Image /ImageFile:"%~1" /Index:1 /ApplyDir:%win_ltr%:\
 )
-bcdboot %win_vol%:\Windows
+bcdboot %win_ltr%:\Windows
 echo ^>
 echo ^> Apply completed!
 exit /b
@@ -221,20 +220,48 @@ rem Generate scirpt file dp_script.txt for diskpart in current folder
 rem Use dp_script.txt to format a selected disk
 rem %~1: Target Disk number
 :Format_Disk
+set is_win_disk=0
+set inst_target=
+echo sel disk %sel_disk% > %tmp_file%
+echo detail disk >> %tmp_file%
+for /f "usebackq tokens=2,3 delims= " %%i in (`diskpart /s %tmp_file% ^| find "NTFS" ^| find /v "Hidden"`) do (
+    if exist "%%j:\Windows\system32\winver.exe" (
+        set is_win_disk=1
+        set win_vol=%%i
+        set win_ltr=%%j
+    )
+)
+if /i "%is_win_disk%" EQU "1" (
+    echo ^>
+    echo ^> Windows OS found in this disk, install image with:
+    echo ^>  1. Full disk
+    echo ^>  2. Windows partition only
+    echo ^>
+    set /p "inst_target=> Select to continue: "
+)
+if /i "%inst_target%" EQU "2" (
+    echo sel vol %win_vol% > %tmp_file%
+    echo format quick fs=ntfs >> %tmp_file%
+    diskpart /s %tmp_file%
+    exit /b
+)
+if "%is_win_disk%" EQU "1" if "%inst_target%" NEQ "1" (
+    exit /b 1
+)
 echo select disk %~1 > %tmp_file%
 echo clean >> %tmp_file%
 echo convert gpt >> %tmp_file%
 echo create partition efi size=260 >> %tmp_file%
 echo format quick fs=fat32 label="System" >> %tmp_file%
-echo assign letter="%sys_vol%" >> %tmp_file%
+echo assign letter="%sys_ltr%" >> %tmp_file%
 echo create partition msr size=16 >> %tmp_file%
 echo create partition primary >> %tmp_file%
 echo shrink minimum=500 >> %tmp_file%
 echo format quick fs=ntfs label="Windows" >> %tmp_file%
-echo assign letter="%win_vol%" >> %tmp_file%
+echo assign letter="%win_ltr%" >> %tmp_file%
 echo create partition primary >> %tmp_file%
 echo format quick fs=ntfs label="Recovery" >> %tmp_file%
-echo assign letter="%rcy_vol%" >> %tmp_file%
+echo assign letter="%rcy_ltr%" >> %tmp_file%
 echo set id="de94bba4-06d1-4d40-a16a-bfd50179d6ac" >> %tmp_file%
 echo gpt attributes=0x8000000000000001 >> %tmp_file%
 echo list volume >> %tmp_file%
