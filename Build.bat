@@ -1,19 +1,28 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 240829
-set ver=v01
+rem By Q3aN 241129
+set ver=v02
+
+rem Future feature:
+rem  [x] build clean with git ignore
+rem  [ ] build clean once a day
+rem  [x] save me image version txt
+rem  [x] default not gather
+rem  [x] quick stop
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Build %ver%
-set TOOLS_DIR=C:\Aptio_5.x_TOOLS_JRE_53\BuildTools
+set TOOLS_DIR=C:\Aptio_5.x_TOOLS_JRE_56\BuildTools
 set PYTHON_COMMAND=py
 set CHECKSUM_FILE=checksum.json
+set Tee_Exe="C:\Program Files\Git\usr\bin\tee.exe"
 set path=%cd%;%path%;%TOOLS_DIR%
 set BuildLog=Build.log
 set VEB=
+set in_para1=
 for /f "delims=." %%v in ('dir /b *.veb') do ( set "VEB=%%v" )
 if /i "%~1" EQU "/c" ( set "in_para1=c" )
 if /i "%~1" EQU "-c" ( set "in_para1=c" )
@@ -27,10 +36,6 @@ if "%in_para1%" EQU "c" (
     call :Gather
 ) else (
     call :BuildAll
-    echo ^>
-    echo ^> Press any key to gather build files ...
-    pause >nul
-    call :Gather
 )
 echo ^>
 echo =====================================================
@@ -44,6 +49,7 @@ rem ****************************************************************************
 rem Gather build files
 :Clean
 make clean
+git clean -x -d -f
 for /f "delims=" %%d in ('dir /ad/b/s /o-n') do @rd %%d 2>nul
 exit /b 0
 
@@ -60,7 +66,13 @@ rem ****************************************************************************
 rem Build all, save logs and calulate duration
 :BuildAll
 set begin=%time%
-powershell "make rebuild 2>&1 | Add-Content %BuildLog% -Passthru"
+::powershell "make rebuild 2>&1 | Set-Content %BuildLog% -Passthru"
+::powershell "make rebuild 2>&1 | Out-File -FilePath '%BuildLog%' -Encoding ASCII -Append"
+::make rebuild 2>&1
+::make rebuild 2>nul 1>nul
+::make rebuild | %Tee_Exe% %BuildLog%
+set PYTHONUNBUFFERED=1
+make rebuild 2>&1 | %Tee_Exe% %BuildLog%
 set end=%time%
 set /a begin_sec=(%begin:~0,2%)*3600 + (1%begin:~3,2% %% 100)*60 + (1%begin:~6,2% %% 100)
 set /a end_sec=(%end:~0,2%)*3600 + (1%end:~3,2% %% 100)*60 + (1%end:~6,2% %% 100)
@@ -69,7 +81,8 @@ set /a spend_min=%spend% / 60
 set /a spend_sec=%spend% - %spend_min%*60
 set /a out_min=spend_min + 100
 set /a out_sec=spend_sec + 100
-powershell "echo '' 'Build total time: 00:%out_min:~1%:%out_sec:~1%' | Add-Content %BuildLog% -Passthru"
+echo Build total time: 00:%out_min:~1%:%out_sec:~1% | %Tee_Exe% -a %BuildLog%
+::powershell "echo '' 'Build total time: 00:%out_min:~1%:%out_sec:~1%' | Add-Content %BuildLog% -Passthru"
 exit /b 0
 
 
@@ -155,11 +168,14 @@ if exist Build\Token.mak xcopy Build\Token.mak %Rom_Name%\
 if exist Build\Platform.fdf xcopy Build\Platform.fdf %Rom_Name%\
 if exist %Rom_Name%.bin xcopy %Rom_Name%.bin %Rom_Name%\
 if exist %Rom_Name%.map xcopy %Rom_Name%.map %Rom_Name%\
+if exist %Rom_Name%.txt xcopy %Rom_Name%.txt %Rom_Name%\
 if exist %~1.map xcopy %~1.map %Rom_Name%\
-if exist %Rom_Name%.CAP xcopy %Rom_Name%.CAP %Rom_Name%\
+if exist %~1.txt xcopy %~1.txt %Rom_Name%\
+if exist %Rom_Name%.cap xcopy %Rom_Name%.cap %Rom_Name%\
 if exist WIN_%Rom_Name%.exe xcopy WIN_%Rom_Name%.exe %Rom_Name%\
 if exist Build\AmiCrbMeRoms\ME_FWUpdate.bin xcopy Build\AmiCrbMeRoms\ME_FWUpdate.bin %Rom_Name%\
 if exist Build\AmiCrbMeRoms\ME_FWUpdate.map xcopy Build\AmiCrbMeRoms\ME_FWUpdate.map %Rom_Name%\
+if exist Build\AmiCrbMeRoms\ME_FWUpdate.txt xcopy Build\AmiCrbMeRoms\ME_FWUpdate.txt %Rom_Name%\
 for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i ^| findstr /i /c:"Build"`) do (
     if "%%i" NEQ "" (xcopy %%i %Rom_Name%\)
 )
@@ -169,11 +185,11 @@ for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`
 for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| findstr /i /c:"Build"`) do (
     if exist %%i xcopy %%i %Rom_Name%\
 )
-for /f "usebackq delims=" %%i in (`dir /b *.cab ^| findstr /i /c:"%~1"`) do (
+for /f "usebackq delims=" %%i in (`dir /b *.cab 2^>nul ^| findstr /i /c:"%~1"`) do (
     if exist %%i xcopy %%i %Rom_Name%\
 )
 if exist WFU/%~1.cat xcopy WFU %Rom_Name%\WFU\
-explorer %~dp0%ROM_Name%
+explorer %ROM_Name%
 exit /b 0
 
 
