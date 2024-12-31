@@ -1,12 +1,12 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 241129
-set ver=v02
+rem By Q3aN 241230
+set ver=v03
 
 rem Future feature:
 rem  [x] build clean with git ignore
-rem  [ ] build clean once a day
+rem  [x] build clean once a day
 rem  [x] save me image version txt
 rem  [x] default not gather
 rem  [x] quick stop
@@ -15,34 +15,40 @@ echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Build %ver%
+
 set TOOLS_DIR=C:\Aptio_5.x_TOOLS_JRE_56\BuildTools
-set PYTHON_COMMAND=py
+set PYTHON_COMMAND=python
 set CHECKSUM_FILE=checksum.json
-set Tee_Exe="C:\Program Files\Git\usr\bin\tee.exe"
-set path=%cd%;%path%;%TOOLS_DIR%
+set path=%cd%;%TOOLS_DIR%;%path%;
 set BuildLog=Build.log
 set VEB=
-set in_para1=
+set Tee_Exe="C:\PROGRA~1\Git\usr\bin\tee.exe"
+call :Check_Python
+set "param=%~1"
+if defined param (
+    set "param=!param:/=!"
+    set "param=!param:-=!"
+)
 for /f "delims=." %%v in ('dir /b *.veb') do ( set "VEB=%%v" )
-if /i "%~1" EQU "/c" ( set "in_para1=c" )
-if /i "%~1" EQU "-c" ( set "in_para1=c" )
-if /i "%~1" EQU "c"  ( set "in_para1=c" )
-if /i "%~1" EQU "/g" ( set "in_para1=g" )
-if /i "%~1" EQU "-g" ( set "in_para1=g" )
-if /i "%~1" EQU "g"  ( set "in_para1=g" )
-if "%in_para1%" EQU "c" (
+if "%param%" EQU "c" (
     call :Clean
-) else if "%in_para1%" EQU "g" (
+) else if "%param%" EQU "g" (
     call :Gather
 ) else (
+    if exist %BuildLog% (
+        for /f "usebackq" %%i in (`powershell ^(Get-Item "%BuildLog%"^).CreationTime.toString^('MM/dd/yyyy'^)`) do ( set "file_date=%%i" )
+        for /f "usebackq" %%i in (`powershell get-date -format "{MM/dd/yyyy}"`) do ( set "current_date=%%i" )
+        if "!file_date!" NEQ "!current_date!" ( call :Clean )
+    )
     call :BuildAll
 )
+
 echo ^>
 echo =====================================================
 echo.
 
 endLocal
-exit /b 0
+exit /b
 
 
 rem ****************************************************************************
@@ -51,7 +57,7 @@ rem Gather build files
 make clean
 git clean -x -d -f
 for /f "delims=" %%d in ('dir /ad/b/s /o-n') do @rd %%d 2>nul
-exit /b 0
+exit /b
 
 
 rem ****************************************************************************
@@ -59,20 +65,19 @@ rem Gather build files
 :Gather
 call :Save_Buildfiles
 call :Do_Ending %errorlevel%
-exit /b 0
+exit /b
 
 
 rem ****************************************************************************
 rem Build all, save logs and calulate duration
 :BuildAll
 set begin=%time%
-::powershell "make rebuild 2>&1 | Set-Content %BuildLog% -Passthru"
-::powershell "make rebuild 2>&1 | Out-File -FilePath '%BuildLog%' -Encoding ASCII -Append"
-::make rebuild 2>&1
-::make rebuild 2>nul 1>nul
-::make rebuild | %Tee_Exe% %BuildLog%
 set PYTHONUNBUFFERED=1
-make rebuild 2>&1 | %Tee_Exe% %BuildLog%
+if exist %Tee_Exe% (
+    make rebuild 2>&1 | %Tee_Exe% %BuildLog%
+) else (
+    make rebuild 2>&1
+)
 set end=%time%
 set /a begin_sec=(%begin:~0,2%)*3600 + (1%begin:~3,2% %% 100)*60 + (1%begin:~6,2% %% 100)
 set /a end_sec=(%end:~0,2%)*3600 + (1%end:~3,2% %% 100)*60 + (1%end:~6,2% %% 100)
@@ -81,9 +86,12 @@ set /a spend_min=%spend% / 60
 set /a spend_sec=%spend% - %spend_min%*60
 set /a out_min=spend_min + 100
 set /a out_sec=spend_sec + 100
-echo Build total time: 00:%out_min:~1%:%out_sec:~1% | %Tee_Exe% -a %BuildLog%
-::powershell "echo '' 'Build total time: 00:%out_min:~1%:%out_sec:~1%' | Add-Content %BuildLog% -Passthru"
-exit /b 0
+if exist %Tee_Exe% (
+    echo Build total time: 00:%out_min:~1%:%out_sec:~1% | %Tee_Exe% -a %BuildLog%
+) else (
+    echo Build total time: 00:%out_min:~1%:%out_sec:~1%
+)
+exit /b
 
 
 rem ****************************************************************************
@@ -166,6 +174,7 @@ if exist Build.log xcopy Build.log %Rom_Name%\
 if exist Build\Token.h xcopy Build\Token.h %Rom_Name%\
 if exist Build\Token.mak xcopy Build\Token.mak %Rom_Name%\
 if exist Build\Platform.fdf xcopy Build\Platform.fdf %Rom_Name%\
+if exist Build\Platform.dsc xcopy Build\Platform.dsc %Rom_Name%\
 if exist %Rom_Name%.bin xcopy %Rom_Name%.bin %Rom_Name%\
 if exist %Rom_Name%.map xcopy %Rom_Name%.map %Rom_Name%\
 if exist %Rom_Name%.txt xcopy %Rom_Name%.txt %Rom_Name%\
@@ -190,7 +199,7 @@ for /f "usebackq delims=" %%i in (`dir /b *.cab 2^>nul ^| findstr /i /c:"%~1"`) 
 )
 if exist WFU/%~1.cat xcopy WFU %Rom_Name%\WFU\
 explorer %ROM_Name%
-exit /b 0
+exit /b
 
 
 rem ****************************************************************************
@@ -204,6 +213,7 @@ if exist Build.log xcopy Build.log %~1\
 if exist Build\Token.h xcopy Build\Token.h %~1\
 if exist Build\Token.mak xcopy Build\Token.mak %~1\
 if exist Build\Platform.fdf xcopy Build\Platform.fdf %Rom_Name%\
+if exist Build\Platform.dsc xcopy Build\Platform.dsc %Rom_Name%\
 if exist Build\AmiCrbMeRoms xcopy Build\AmiCrbMeRoms %~1\AmiCrbMeRoms\
 if exist %~1.rom xcopy %~1.rom %~1\
 for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i ^| findstr /i /c:"Build"`) do (
@@ -215,5 +225,25 @@ for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`
 for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| findstr /i /c:"Build"`) do (
     if exist %%i xcopy %%i %~1\
 )
-explorer %~dp0%~1
+explorer %~1
+exit /b
+
+
+rem ****************************************************************************
+rem Check Python Path, make sure "python" can call python
+rem   If "py" avaliable but "python" not, means py was install by installer
+rem   without checking "add python to path"
+:Check_Python
+for /f "usebackq" %%i in (`where python 2^>nul ^| find /v "WindowsApps\python.exe"`) do (
+    exit /b
+)
+where py 1>nul 2>nul
+if "%errorlevel%" NEQ "0" (
+    echo Python Path check fail
+    exit /b 99
+)
+for /f "usebackq tokens=2 delims= " %%i in (`py -0p 2^>nul`) do (
+    set "py_python=%%i"
+    set "PATH=!py_python:~0,-11!;%PATH%;"
+)
 exit /b
