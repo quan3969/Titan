@@ -1,15 +1,11 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 241230
-set ver=v03
+rem By Q3aN 250118
+set ver=v04
 
 rem Future feature:
-rem  [x] build clean with git ignore
-rem  [x] build clean once a day
-rem  [x] save me image version txt
-rem  [x] default not gather
-rem  [x] quick stop
+rem  [ ] to be filled
 
 echo.
 echo =====================================================
@@ -166,7 +162,7 @@ if "%~3" EQU "1" (
 for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"FWCAPSULE_FILE_NAME" Build\Token.h`) do (
     set Version_Now_Using=%%i
 )
-if %~1%~2 EQU %Version_Now_Using% (
+if not exist %Rom_Name%.bin if %~1%~2 EQU %Version_Now_Using% (
     set Rom_Name=%~1%~2
 )
 if exist %Rom_Name% (del /s/q %Rom_Name%\*) else (mkdir %Rom_Name%)
@@ -185,13 +181,16 @@ if exist WIN_%Rom_Name%.exe xcopy WIN_%Rom_Name%.exe %Rom_Name%\
 if exist Build\AmiCrbMeRoms\ME_FWUpdate.bin xcopy Build\AmiCrbMeRoms\ME_FWUpdate.bin %Rom_Name%\
 if exist Build\AmiCrbMeRoms\ME_FWUpdate.map xcopy Build\AmiCrbMeRoms\ME_FWUpdate.map %Rom_Name%\
 if exist Build\AmiCrbMeRoms\ME_FWUpdate.txt xcopy Build\AmiCrbMeRoms\ME_FWUpdate.txt %Rom_Name%\
-for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i ^| findstr /i /c:"Build"`) do (
+for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i ^| find "Build"`) do (
+    if "%%i" NEQ "" (xcopy %%i %Rom_Name%\)
+)
+for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaultsStrDefs.h ^| find "Build"`) do (
     if "%%i" NEQ "" (xcopy %%i %Rom_Name%\)
 )
 for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`) do (
     set POJ_Name=%%i
 )
-for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| findstr /i /c:"Build"`) do (
+for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| find "Build"`) do (
     if exist %%i xcopy %%i %Rom_Name%\
 )
 for /f "usebackq delims=" %%i in (`dir /b *.cab 2^>nul ^| findstr /i /c:"%~1"`) do (
@@ -216,7 +215,10 @@ if exist Build\Platform.fdf xcopy Build\Platform.fdf %Rom_Name%\
 if exist Build\Platform.dsc xcopy Build\Platform.dsc %Rom_Name%\
 if exist Build\AmiCrbMeRoms xcopy Build\AmiCrbMeRoms %~1\AmiCrbMeRoms\
 if exist %~1.rom xcopy %~1.rom %~1\
-for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i ^| findstr /i /c:"Build"`) do (
+for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i ^| find "Build"`) do (
+    if "%%i" NEQ "" (xcopy %%i %~1\)
+)
+for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaultsStrDefs.h ^| findstr /i /c:"Build"`) do (
     if "%%i" NEQ "" (xcopy %%i %~1\)
 )
 for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`) do (
