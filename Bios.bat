@@ -1,8 +1,8 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 250118
-set ver=v04
+rem By Q3aN 250125
+set ver=v05
 
 rem Future feature:
 rem  [ ] to be filled
@@ -102,14 +102,14 @@ for /f "usebackq delims=" %%i in (`findstr /c:"#define DEBUG_MODE	1" Build\Token
     set Debug_Mode=1
 )
 :: 2. Check Samsung Project
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"SAMSUNG_BIOS_MAJOR_VERSION" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_MAJOR_VERSION" Build\Token.h`) do (
     set Ver_Major=%%i
 )
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"SAMSUNG_BIOS_MINOR_VERSION" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_MINOR_VERSION" Build\Token.h`) do (
     set Ver_Minor=%%i
 )
 set test_build=4
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"SAMSUNG_TEST_BIOS_VERSION" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_TEST_BIOS_VERSION" Build\Token.h`) do (
     set test_build=%%i
 )
 if "%Ver_Major%" NEQ "" (
@@ -117,7 +117,7 @@ if "%Ver_Major%" NEQ "" (
     exit /b
 )
 :: 3. Check AMI project
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"RECOVERY_ROM" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" RECOVERY_ROM" Build\Token.h`) do (
     set Rom_Name=%%i
 )
 if "%Rom_Name%" NEQ "" (
@@ -159,7 +159,7 @@ if "%~3" EQU "1" (
     set Rom_Name=%Rom_Name%_dbg
 )
 :: for E00JZR01A
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:"FWCAPSULE_FILE_NAME" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" FWCAPSULE_FILE_NAME" Build\Token.h`) do (
     set Version_Now_Using=%%i
 )
 if not exist %Rom_Name%.bin if %~1%~2 EQU %Version_Now_Using% (
