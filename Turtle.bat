@@ -1,8 +1,11 @@
 @echo off
 setLocal enableDelayedExpansion
 rem All in one script for windows customization
-rem By Q3aN 240905
-set ver=v04
+rem By Q3aN 250219
+set ver=v05
+
+rem Future feature:
+rem  [x] set testsigning mode
 
 call :AskAdmin
 
@@ -25,6 +28,7 @@ if %errorlevel% EQU 0 ( call :Set_AutoUpdate      0 )
 if %errorlevel% EQU 0 ( call :Set_UsbPrompt       0 )
 if %errorlevel% EQU 0 ( call :Set_RemoteDesktop   1 )
 if %errorlevel% EQU 0 ( call :Set_ShowHidden      1 )
+:: if %errorlevel% EQU 0 ( call :Set_TestSigning     0 )
 :: if %errorlevel% EQU 0 ( call :Set_Recovery        0 )
 :: if %errorlevel% EQU 0 ( call :Set_AutoAdminLogon    )
 :: if %errorlevel% EQU 0 ( call :Set_Language  "en-US" )
@@ -391,4 +395,26 @@ if "%~1" EQU "1" if %val% EQU 0 (
     exit /b 0
 )
 echo ^>  Show Hidden:        %val%
+exit /b 0
+
+
+rem ****************************************************************************
+rem Set Test Signing mode
+:Set_TestSigning
+chcp 437 >nul
+set val=0
+for /f "tokens=2 delims= " %%i in ('bcdedit /enum {current} ^| find "testsigning"') do (
+    if "%%i" EQU "Yes" set val=1
+)
+if "%~1" EQU "1" if %val% EQU 0 (
+    for /f "usebackq tokens=2 delims= " %%i in (`bcdedit /enum {current} ^| findstr "identifier recoverysequence resumeobject"`) do bcdedit /set %%i testsigning on >nul
+    echo ^>  Test Mode:        0 -^> 1
+    exit /b 0
+)
+if "%~1" EQU "0" if %val% EQU 1 (
+    for /f "usebackq tokens=2 delims= " %%i in (`bcdedit /enum {current} ^| findstr "identifier recoverysequence resumeobject"`) do bcdedit /set %%i testsigning off >nul
+    echo ^>  Test Mode:        1 -^> 0
+    exit /b 0
+)
+echo ^>  Test Mode:          %val%
 exit /b 0
