@@ -1,11 +1,12 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 250125
-set ver=v05
+rem By Q3aN 250220
+set ver=v06
 
 rem Future feature:
-rem  [ ] to be filled
+rem  [x] check platform to decide build tools
+rem  [x] build sort
 
 echo.
 echo =====================================================
@@ -18,6 +19,11 @@ set CHECKSUM_FILE=checksum.json
 set path=%cd%;%TOOLS_DIR%;%path%;
 set BuildLog=Build.log
 set VEB=
+for /f "delims=." %%v in ('dir /b *.veb 2^>nul') do ( set "VEB=%%v" )
+if "%VEB%" EQU "AlderLake" (
+    @REM set TOOLS_DIR=C:\Aptio_5.x_TOOLS_JRE_50\BuildTools
+    set EWDK_DIR=C:\EWDK
+)
 set Tee_Exe="C:\PROGRA~1\Git\usr\bin\tee.exe"
 call :Check_Python
 set "param=%~1"
@@ -25,11 +31,14 @@ if defined param (
     set "param=!param:/=!"
     set "param=!param:-=!"
 )
-for /f "delims=." %%v in ('dir /b *.veb') do ( set "VEB=%%v" )
 if "%param%" EQU "c" (
     call :Clean
 ) else if "%param%" EQU "g" (
     call :Gather
+) else if "%param%" EQU "s" (
+    call :Sort_Cmd "Token.h" "Token_s.h"
+    call :Sort_Cmd "Token.mak" "Token_s.mak"
+    call :Sort_Custom "SetupDefaults.i" "SetupDefaults_s.i"
 ) else (
     if exist %BuildLog% (
         for /f "usebackq" %%i in (`powershell ^(Get-Item "%BuildLog%"^).CreationTime.toString^('MM/dd/yyyy'^)`) do ( set "file_date=%%i" )
@@ -249,3 +258,53 @@ for /f "usebackq tokens=2 delims= " %%i in (`py -0p 2^>nul`) do (
     set "PATH=!py_python:~0,-11!;%PATH%;"
 )
 exit /b
+
+
+rem ****************************************************************************
+rem Use CMD command to sort file line by name
+rem   %~1: file input
+rem   %~2: file output
+:Sort_Cmd
+setLocal enableDelayedExpansion
+if not exist %~1 (
+    echo ^>
+    echo ^> %~1 not found.
+    exit /b 0
+)
+echo ^>
+echo ^> Sorting: %~1
+sort %~1 > %~2
+endLocal
+exit /b 0
+
+
+rem ****************************************************************************
+rem Use custom command to sort file and remove unwanted string
+rem   %~1: file input
+rem   %~2: file output
+:Sort_Custom
+setLocal enableDelayedExpansion
+if not exist %~1 (
+    echo ^>
+    echo ^> %~1 not found.
+    exit /b 0
+)
+if exist %~2 (
+    del %~2
+)
+echo ^>
+echo ^> Sorting: %~1
+for /f "usebackq delims=" %%a in (`findstr /c:"." %~1 ^| findstr /v "#line"`) do (
+    echo.%%a >>%~2
+)
+for %%a in (
+    "((((get-content %~2) " 
+    "-replace 'STRING_TOKEN\(.......', '') "
+    "-replace 'STRING_TOKEN \(.......', '') "
+    "-replace 'questionid = .....', 'questionid = ') "
+    "-replace 'key = .....', 'key = ' "
+    "| set-content %~2"
+) do set Cmd_Exc=!Cmd_Exc!%%~a
+powershell -command "%Cmd_Exc%"
+endLocal
+exit /b 0
