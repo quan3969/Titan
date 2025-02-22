@@ -1,8 +1,8 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For Titan WinPE.
-rem By Q3aN 240411
-set ver=v02
+rem By Q3aN 250222
+set ver=v03
 
 set end_pause=1
 
@@ -136,26 +136,25 @@ if "%wpeinit_vol%" EQU "" (
 call :Gen_Unattend %wpeinit_vol%
 wpeinit /unattend="%wpeinit_vol%:\Windows\System32\unattend.xml"
 echo ^>
-echo ^>  Select (Reboot: R, Shutdown: S):
-echo @echo off > %wpeinit_vol%:\Windows\System32\R.bat
-echo Wpeutil Reboot >> %wpeinit_vol%:\Windows\System32\R.bat
-echo @echo off > %wpeinit_vol%:\Windows\System32\S.bat
-echo Wpeutil Shutdown >> %wpeinit_vol%:\Windows\System32\S.bat
+echo ^>  Select (Reboot: rr, Shutdown: ss):
+echo Wpeutil Reboot > %wpeinit_vol%:\Windows\System32\rr.bat
+echo Wpeutil Shutdown > %wpeinit_vol%:\Windows\System32\ss.bat
 if "%cleanOS_path%" NEQ "" (
     echo ^>   1. Clean OS
-    echo @echo off > %wpeinit_vol%:\Windows\System32\1.bat
-    echo %cleanOS_path% >> %wpeinit_vol%:\Windows\System32\1.bat
+    echo %cleanOS_path% > %wpeinit_vol%:\Windows\System32\1.bat
 )
 if "%explorer_path%" NEQ "" (
     echo ^>   2. Explorer
-    echo @echo off > %wpeinit_vol%:\Windows\System32\2.bat
-    echo %explorer_path% >> %wpeinit_vol%:\Windows\System32\2.bat
+    echo %explorer_path% > %wpeinit_vol%:\Windows\System32\2.bat
 )
 if "%winClon_path%" NEQ "" (
     echo ^>   3. WinClon
-    echo @echo off > %wpeinit_vol%:\Windows\System32\3.bat
-    echo %winClon_path% >> %wpeinit_vol%:\Windows\System32\3.bat
-) 
+    echo %winClon_path% > %wpeinit_vol%:\Windows\System32\3.bat
+)
+echo ^>   4. FFU
+echo @echo ^^^> > %wpeinit_vol%:\Windows\System32\4.bat
+echo @echo ^^^> DISM.exe /capture-ffu /imagefile=e:\WinOEM.ffu /capturedrive=\\.\PhysicalDrive0 /name:disk0 >> %wpeinit_vol%:\Windows\System32\4.bat
+echo @echo ^^^> DISM /apply-ffu /ImageFile=N:\WinOEM.ffu /ApplyDrive:\\.\PhysicalDrive0 >> %wpeinit_vol%:\Windows\System32\4.bat
 exit /b
 
 
