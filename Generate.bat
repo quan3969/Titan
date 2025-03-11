@@ -1,15 +1,19 @@
 @echo off
 setLocal enableDelayedExpansion
 rem Find BIOS update files and generate script for easy update.
-rem By Q3aN 241010
-set ver=v05
+rem By Q3aN 250311
+set ver=v06
+
+rem Future feature:
+rem  [x] support PTL
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Generate %ver%
 
-set "ARL_ID=RHH"
+set "PTL_ID=JAT"
+set "ARL_ID=RHH RHJ"
 set "LNL_ID=JZR VAJ ALY RHF AMA RHG"
 set "MTL_ID=RHA RHB RHD"
 set "RPL_ID=RGU RGS RGT RHC"
@@ -23,7 +27,7 @@ set "DnX_MTL=Intel(R) MeteorLake P Chipset - DnX Recovery Image"
 set "DnX_RPL=Intel(R) AlderLake P Chipset - DnX Recovery Image"
 
 set "AFU_Para1=/p /b /n /capsule /q"
-set "Para1_Support=MTL LNL ARL"
+set "Para1_Support=MTL LNL ARL PTL"
 set "AFU_Para2=/p /b /n /r /e /capsule /q"
 set "Para2_Support=RPL ADL TGL CML"
 set "AFU_Para3=/p /b /n /meul /capsule /q"
@@ -58,7 +62,6 @@ exit /b 0
 rem ****************************************************************************
 rem Find the BIOS EXE file, generate script according to platform
 :Gen_EXE
-setLocal enableDelayedExpansion
 for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
     set file_name=%%i
     for /f "delims=" %%j in ('where !file_name!') do ( set file_path=%%j )
@@ -73,7 +76,10 @@ for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
         echo !file_name! /eu /op:w > !out_name!
         echo ^>
         echo ^> !out_name!
-    ) else if !file_ver! GTR 4.43.0.0 (
+    ) else if !file_ver! EQU 4.43.0.0 (
+        rem
+        rem 4.43.0.0 need "/afu" parameter
+        rem
         if "!file_name:~4,1!" NEQ "E" (
             set out_name=!file_name:~4,3!_EXE.bat
         ) else (
@@ -101,17 +107,18 @@ for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
         )
     )
 )
-endLocal
 exit /b 0
 
 
 rem ****************************************************************************
 rem Find the BIOS CAP file, generate script according to platform
 :Gen_CAP
-setLocal enableDelayedExpansion
 for /f "usebackq delims=" %%i in (`dir /b *.cap 2^>nul`) do (
     set File_Name=%%i
     set File_Platform=
+    for %%a in ( %PTL_ID% ) do (
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=PTL" )
+    )
     for %%a in ( %ARL_ID% ) do (
         if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=ARL" )
     )
@@ -155,7 +162,6 @@ for /f "usebackq delims=" %%i in (`dir /b *.cap 2^>nul`) do (
         echo ^> !out_name!
     )
 )
-endLocal
 exit /b 0
 
 
@@ -177,6 +183,9 @@ if exist ".\etc\config.ini" (
 for /f "usebackq delims=" %%i in (`dir /b *.bin 2^>nul`) do (
     set File_Name=%%i
     set File_Platform=
+    for %%a in ( %PTL_ID% ) do (
+        if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=PTL" )
+    )
     for %%a in ( %ARL_ID% ) do (
         if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=ARL" )
     )
