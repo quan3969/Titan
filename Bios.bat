@@ -1,29 +1,36 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 250220
-set ver=v06
+rem By Q3aN 250331
+set ver=v07
 
 rem Future feature:
 rem  [x] check platform to decide build tools
 rem  [x] build sort
+rem  [x] use zulu as java
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Build %ver%
 
-set TOOLS_DIR=C:\Aptio_5.x_TOOLS_JRE_56\BuildTools
-set PYTHON_COMMAND=python
-set CHECKSUM_FILE=checksum.json
-set path=%cd%;%TOOLS_DIR%;%path%;
-set BuildLog=Build.log
+set VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_56
 set VEB=
 for /f "delims=." %%v in ('dir /b *.veb 2^>nul') do ( set "VEB=%%v" )
 if "%VEB%" EQU "AlderLake" (
-    @REM set TOOLS_DIR=C:\Aptio_5.x_TOOLS_JRE_50\BuildTools
+    set VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_50
     set EWDK_DIR=C:\EWDK
 )
+if "%VEB%" EQU "RaptorLake" (
+    set VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_50
+    set EWDK_DIR=C:\EWDK
+)
+set TOOLS_DIR=%VeB_Dir%\BuildTools
+set Java_Dir=%VeB_Dir%\VisualeBios\zulu\bin
+set PYTHON_COMMAND=python
+set CHECKSUM_FILE=checksum.json
+set path=%cd%;%TOOLS_DIR%;%Java_Dir%;%path%;
+set BuildLog=Build.log
 set Tee_Exe="C:\PROGRA~1\Git\usr\bin\tee.exe"
 call :Check_Python
 set "param=%~1"
