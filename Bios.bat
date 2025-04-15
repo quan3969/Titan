@@ -1,13 +1,13 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 250331
-set ver=v07
+rem By Q3aN 250414
+set ver=v08
 
 rem Future feature:
-rem  [x] check platform to decide build tools
-rem  [x] build sort
-rem  [x] use zulu as java
+rem  [x] python check update
+rem  [x] add llvm
+rem  [ ] gather for new bios verison format
 
 echo.
 echo =====================================================
@@ -29,6 +29,7 @@ set TOOLS_DIR=%VeB_Dir%\BuildTools
 set Java_Dir=%VeB_Dir%\VisualeBios\zulu\bin
 set PYTHON_COMMAND=python
 set CHECKSUM_FILE=checksum.json
+set "CLANG_BIN=C:\Program Files\LLVM\bin"
 set path=%cd%;%TOOLS_DIR%;%Java_Dir%;%path%;
 set BuildLog=Build.log
 set Tee_Exe="C:\PROGRA~1\Git\usr\bin\tee.exe"
@@ -260,10 +261,11 @@ if "%errorlevel%" NEQ "0" (
     echo Python Path check fail
     exit /b 99
 )
-for /f "usebackq tokens=2 delims= " %%i in (`py -0p 2^>nul`) do (
-    set "py_python=%%i"
-    set "PATH=!py_python:~0,-11!;%PATH%;"
+for /f "tokens=1 delims=[" %%a in ('py -h ^| find "python.exe"') do (
+  set python_exe=%%a
+  set python_dir=!python_exe:~7,-12!
 )
+set path=%python_dir%;%path%;
 exit /b
 
 
