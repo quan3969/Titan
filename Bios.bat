@@ -1,20 +1,19 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 250414
+rem By Q3aN 250422
 set ver=v08
 
 rem Future feature:
-rem  [x] python check update
-rem  [x] add llvm
-rem  [ ] gather for new bios verison format
+rem  [x] veb 58
+rem  [x] bios gather for new version format
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Build %ver%
 
-set VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_56
+set VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_58_x64
 set VEB=
 for /f "delims=." %%v in ('dir /b *.veb 2^>nul') do ( set "VEB=%%v" )
 if "%VEB%" EQU "AlderLake" (
@@ -110,7 +109,9 @@ exit /b
 rem ****************************************************************************
 rem Check and save build output files
 :Save_Buildfiles
-:: 1. Check build complete
+rem
+rem 1. Check build complete
+rem
 if not exist Build\Token.h (
     exit /b 6
 )
@@ -118,7 +119,9 @@ set Debug_Mode=0
 for /f "usebackq delims=" %%i in (`findstr /c:"#define DEBUG_MODE	1" Build\Token.h`) do (
     set Debug_Mode=1
 )
-:: 2. Check Samsung Project
+rem
+rem 2. Check Samsung Project
+rem
 for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_MAJOR_VERSION" Build\Token.h`) do (
     set Ver_Major=%%i
 )
@@ -133,7 +136,35 @@ if "%Ver_Major%" NEQ "" (
     call :Save_Samsung %Ver_Major% %Ver_Minor% %Debug_Mode% %test_build%
     exit /b
 )
-:: 3. Check AMI project
+rem
+rem 3. Check Samsung project new format
+rem
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_MAJOR" Build\Token.h`) do (
+    set /a Ver_Major=%%i
+)
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_MINOR" Build\Token.h`) do (
+    set /a Ver_Minor=%%i
+)
+set test_build=4
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_TEST_BIOS_VERSION" Build\Token.h`) do (
+    set test_build=%%i
+)
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_TAG" Build\Token.h`) do (
+    set Ver_Tag=%%i
+)
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_RP" Build\Token.h`) do (
+    set /a Ver_RP=%%i
+)
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_BUILD" Build\Token.h`) do (
+    set /a Ver_Build=%%i
+)
+if "%Ver_Major%" NEQ "" (
+    call :Save_Samsung_New %Ver_Major% %Ver_Minor% %Debug_Mode% %test_build% %Ver_Tag% %Ver_RP% %Ver_Build%
+    exit /b
+)
+rem
+rem 4. Check AMI project
+rem
 for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" RECOVERY_ROM" Build\Token.h`) do (
     set Rom_Name=%%i
 )
@@ -214,6 +245,58 @@ for /f "usebackq delims=" %%i in (`dir /b *.cab 2^>nul ^| findstr /i /c:"%~1"`) 
     if exist %%i xcopy %%i %Rom_Name%\
 )
 if exist WFU/%~1.cat xcopy WFU %Rom_Name%\WFU\
+explorer %ROM_Name%
+exit /b
+
+
+rem ****************************************************************************
+rem Save build output files for Samsung Project new format
+rem %~1: Major
+rem %~2: Minor
+rem %~3: Debug mode
+rem %~4: Test build (%~4 = 4 means not found)
+rem %~5: Tag
+rem %~6: RP
+rem %~7: Build
+:Save_Samsung_New
+echo ^>
+echo ^> Gather for Samsung project new format.
+rem
+rem ERHK.0.0.2.11_mem.bin
+rem
+set Rom_Name=%~5.%~6.%~1.%~2.%~7
+if "%~4" NEQ "4" (
+    set Rom_Name=%Rom_Name%_%~4
+)
+if "%~3" EQU "1" (
+    set Rom_Name=%Rom_Name%_dbg
+)
+if exist %Rom_Name% (del /s/q %Rom_Name%\*) else (mkdir %Rom_Name%)
+if exist Build.log xcopy Build.log %Rom_Name%\
+if exist Build\Token.h xcopy Build\Token.h %Rom_Name%\
+if exist Build\Token.mak xcopy Build\Token.mak %Rom_Name%\
+if exist Build\Platform.fdf xcopy Build\Platform.fdf %Rom_Name%\
+if exist Build\Platform.dsc xcopy Build\Platform.dsc %Rom_Name%\
+if exist %~5.map xcopy %~5.map %Rom_Name%\
+if exist %~5.txt xcopy %~5.txt %Rom_Name%\
+if exist %Rom_Name%.bin xcopy %Rom_Name%.bin %Rom_Name%\
+if exist %Rom_Name%.cap xcopy %Rom_Name%.cap %Rom_Name%\
+if exist WIN_%Rom_Name%.exe xcopy WIN_%Rom_Name%.exe %Rom_Name%\
+if exist Build\AmiCrbMeRoms\ME_FWUpdate.bin xcopy Build\AmiCrbMeRoms\ME_FWUpdate.bin %Rom_Name%\
+if exist Build\AmiCrbMeRoms\ME_FWUpdate.map xcopy Build\AmiCrbMeRoms\ME_FWUpdate.map %Rom_Name%\
+if exist Build\AmiCrbMeRoms\ME_FWUpdate.txt xcopy Build\AmiCrbMeRoms\ME_FWUpdate.txt %Rom_Name%\
+for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaults.i ^| find "Build"`) do (
+    if "%%i" NEQ "" (xcopy %%i %Rom_Name%\)
+)
+for /f "usebackq delims=" %%i in (`dir /b/s SetupDefaultsStrDefs.h ^| find "Build"`) do (
+    if "%%i" NEQ "" (xcopy %%i %Rom_Name%\)
+)
+for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`) do (
+    set POJ_Name=%%i
+)
+for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| find "Build"`) do (
+    if exist %%i xcopy %%i %Rom_Name%\
+)
 explorer %ROM_Name%
 exit /b
 

@@ -6,6 +6,7 @@ set ver=v05
 
 rem Future feature:
 rem  [x] set testsigning mode
+rem  [ ] explorer privicy
 
 call :AskAdmin
 
