@@ -1,18 +1,20 @@
 @echo off
 setLocal enableDelayedExpansion
 rem Find BIOS update files and generate script for easy update.
-rem By Q3aN 250311
-set ver=v06
+rem By Q3aN 250528
+set ver=v07
 
 rem Future feature:
 rem  [x] support PTL
+rem  [x] support new version format
+rem  [x] use powershell to get version instead of wmic
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Generate %ver%
 
-set "PTL_ID=JAT"
+set "PTL_ID=JAT RHK AMB AMC VAM VAL"
 set "ARL_ID=RHH RHJ"
 set "LNL_ID=JZR VAJ ALY RHF AMA RHG"
 set "MTL_ID=RHA RHB RHD"
@@ -47,8 +49,8 @@ for %%a in (
     "RGM-Venus2 "
 ) do ( set "ID_PW=!ID_PW!%%~a" )
 
-call :Gen_BIN
 call :Gen_CAP
+call :Gen_BIN
 call :Gen_EXE
 
 echo ^>
@@ -66,13 +68,19 @@ for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
     set file_name=%%i
     for /f "delims=" %%j in ('where !file_name!') do ( set file_path=%%j )
     set file_path=!file_path:\=\\!
-    for /f "usebackq" %%k in (`wmic datafile where name^="!file_path!" get version ^| find ".0"`) do ( set file_ver=%%k )
-    if !file_ver! GTR 4.44.0.0 (
+    for /f "usebackq" %%k in (`powershell ^(Get-Item "!file_path!"^).VersionInfo.FileVersion`) do ( set file_ver=%%k )
+    if "!file_name:~10,1!" NEQ "_" (
+        for /f "usebackq tokens=5 delims=." %%i in (`echo !file_name!`) do (
+            set out_name=%%i_EXE.bat
+        )
+    ) else (
         if "!file_name:~4,1!" NEQ "E" (
             set out_name=!file_name:~4,3!_EXE.bat
         ) else (
             set out_name=!file_name:~11,-4!_EXE.bat
         )
+    )
+    if !file_ver! GTR 4.44.0.0 (
         echo !file_name! /eu /op:w > !out_name!
         echo ^>
         echo ^> !out_name!
@@ -80,11 +88,6 @@ for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
         rem
         rem 4.43.0.0 need "/afu" parameter
         rem
-        if "!file_name:~4,1!" NEQ "E" (
-            set out_name=!file_name:~4,3!_EXE.bat
-        ) else (
-            set out_name=!file_name:~11,-4!_EXE.bat
-        )
         echo !file_name! /eu /afu /op:w > !out_name!
         echo ^>
         echo ^> !out_name!
@@ -94,11 +97,6 @@ for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
             if "!file_name:~7,3!" EQU "!file_id_pw:~0,3!" (
                 for /f "usebackq tokens=2 delims=-" %%x in (`echo !file_id_pw!`) do ( 
                     set file_pw=%%x
-                    if "!file_name:~4,1!" NEQ "E" (
-                        set out_name=!file_name:~4,3!_EXE.bat
-                    ) else (
-                        set out_name=!file_name:~11,-4!_EXE.bat
-                    )
                     echo !file_name! /eu:!file_pw! /op:w > !out_name!
                     echo ^>
                     echo ^> !out_name!
@@ -116,6 +114,10 @@ rem Find the BIOS CAP file, generate script according to platform
 for /f "usebackq delims=" %%i in (`dir /b *.cap 2^>nul`) do (
     set File_Name=%%i
     set File_Platform=
+    set File2_Platform=
+    for %%a in ( %PTL_ID% ) do (
+        if "!File_Name:~1,3!" EQU "%%a" ( set "File2_Platform=PTL" )
+    )
     for %%a in ( %PTL_ID% ) do (
         if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=PTL" )
     )
@@ -139,6 +141,18 @@ for /f "usebackq delims=" %%i in (`dir /b *.cap 2^>nul`) do (
     )
     for %%a in ( %CML_ID% ) do (
         if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=CML" )
+    )
+    set out_name=
+    if "!File2_Platform!" NEQ "" (
+        for /f "usebackq tokens=5 delims=." %%i in (`echo !File_Name!`) do (
+            set out_name=%%i_CAP.nsh
+        )
+        for /f "usebackq delims=" %%i in (`echo !Para1_Support! ^| find "!File2_Platform!"`) do (
+            set "afu_cmd=AfuEfix64_!File2_Platform!.efi !File_Name! !AFU_Para1!"
+        )
+        echo !afu_cmd! > !out_name!
+        echo ^>
+        echo ^> !out_name!
     )
     if "!File_Platform!" NEQ "" (
         if "!File_Name:~0,1!" NEQ "E" (
@@ -183,6 +197,10 @@ if exist ".\etc\config.ini" (
 for /f "usebackq delims=" %%i in (`dir /b *.bin 2^>nul`) do (
     set File_Name=%%i
     set File_Platform=
+    set File2_Platform=
+    for %%a in ( %PTL_ID% ) do (
+        if "!File_Name:~1,3!" EQU "%%a" ( set "File2_Platform=PTL" )
+    )
     for %%a in ( %PTL_ID% ) do (
         if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=PTL" )
     )
@@ -207,18 +225,24 @@ for /f "usebackq delims=" %%i in (`dir /b *.bin 2^>nul`) do (
     for %%a in ( %CML_ID% ) do (
         if "!File_Name:~3,3!" EQU "%%a" ( set "File_Platform=CML" )
     )
+    if "!File2_Platform!" NEQ "" (
+        for /f "usebackq tokens=5 delims=." %%i in (`echo !File_Name!`) do (
+            set out_name=%%i
+        )
+        call :Out_Fpt Fpt_!File2_Platform!.efi !File_Name! !out_name!_BIN.nsh
+    )
     if "!File_Platform!" NEQ "" (
         if "!File_Name:~0,1!" NEQ "E" (
-            set Out_Name=!File_Name:~0,3!
+            set out_name=!File_Name:~0,3!
         ) else if "!File_Name:~6,1!" NEQ "_" (
             set out_name=!File_Name:~6,-4!
         ) else (
-            set Out_Name=!file_name:~7,-4!
+            set out_name=!file_name:~7,-4!
         )
         if "!DnxFwExist!" EQU "1" (
-            call :Out_DnX !File_Platform! !DnxFwName! !File_Name! !Out_Name!_DnX.bat
+            call :Out_DnX !File_Platform! !DnxFwName! !File_Name! !out_name!_DnX.bat
         ) else (
-            call :Out_Fpt Fpt_!File_Platform!.efi !File_Name! !Out_Name!_BIN.nsh
+            call :Out_Fpt Fpt_!File_Platform!.efi !File_Name! !out_name!_BIN.nsh
         )
     )
 )
