@@ -8,6 +8,7 @@ rem Future feature:
 rem  [x] support PTL
 rem  [x] support new version format
 rem  [x] use powershell to get version instead of wmic
+rem  [x] support select to flash, with "f" / "a" param, flash with samsungfpt
 
 echo.
 echo =====================================================
@@ -267,8 +268,12 @@ echo.>> %~3
 echo if not exist %%BiosFile%% then>> %~3
 echo     goto NotFound>> %~3
 echo endif>> %~3
-echo if exist %%sFpt%% and ZZ%%1 == ZZ then>> %~3
+echo if exist %%sFpt%% and %%1 == f then>> %~3
 echo     %%sFpt%% -f %%BiosFile%% -unlock>> %~3
+echo     goto End>> %~3
+echo endif>> %~3
+echo if exist %%sFpt%% and %%1 == a then>> %~3
+echo     %%sFpt%% -a %%BiosFile%% -unlock>> %~3
 echo     goto End>> %~3
 echo endif>> %~3
 echo if not exist %%Fpt%% then>> %~3
