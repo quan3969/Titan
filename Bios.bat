@@ -1,37 +1,42 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 250422
-set ver=v08
+rem By Q3aN 250809
+set ver=v09
 
 rem Future feature:
-rem  [x] veb 58
+rem  [x] veb 59
 rem  [x] bios gather for new version format
+rem  [x] collect acpi table
+rem  [x] acpi decode
+rem  [x] check folder and file before run
+rem  [ ] print help
+rem  [ ] support quick build command
 
 echo.
 echo =====================================================
 echo ^>
-echo ^> Welcome to Build %ver%
+echo ^> Welcome to BIOS %ver%
 
-set VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_58_x64
-set VEB=
+set "VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_59_x64"
+set "VEB="
 for /f "delims=." %%v in ('dir /b *.veb 2^>nul') do ( set "VEB=%%v" )
 if "%VEB%" EQU "AlderLake" (
-    set VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_50
-    set EWDK_DIR=C:\EWDK
+    set "VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_50"
+    set "EWDK_DIR=C:\EWDK"
 )
 if "%VEB%" EQU "RaptorLake" (
-    set VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_50
-    set EWDK_DIR=C:\EWDK
+    set "VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_50"
+    set "EWDK_DIR=C:\EWDK"
 )
-set TOOLS_DIR=%VeB_Dir%\BuildTools
-set Java_Dir=%VeB_Dir%\VisualeBios\zulu\bin
-set PYTHON_COMMAND=python
-set CHECKSUM_FILE=checksum.json
+set "TOOLS_DIR=%VeB_Dir%\BuildTools"
+set "Java_Dir=%VeB_Dir%\VisualeBios\zulu\bin"
+set "PYTHON_COMMAND=python"
+set "CHECKSUM_FILE=checksum.json"
 set "CLANG_BIN=C:\Program Files\LLVM\bin"
-set path=%cd%;%TOOLS_DIR%;%Java_Dir%;%path%;
-set BuildLog=Build.log
-set Tee_Exe="C:\PROGRA~1\Git\usr\bin\tee.exe"
+set "path=%cd%;%TOOLS_DIR%;%Java_Dir%;%path%;"
+set "BuildLog=Build.log"
+set "Tee_Exe=C:\PROGRA~1\Git\usr\bin\tee.exe"
 call :Check_Python
 set "param=%~1"
 if defined param (
@@ -46,6 +51,10 @@ if "%param%" EQU "c" (
     call :Sort_Cmd "Token.h" "Token_s.h"
     call :Sort_Cmd "Token.mak" "Token_s.mak"
     call :Sort_Custom "SetupDefaults.i" "SetupDefaults_s.i"
+) else if "%param%" EQU "asl" (
+    call :Asl_Decode
+) else if "%param%" EQU "h" (
+    call :Print_Help
 ) else (
     if exist %BuildLog% (
         for /f "usebackq" %%i in (`powershell ^(Get-Item "%BuildLog%"^).CreationTime.toString^('MM/dd/yyyy'^)`) do ( set "file_date=%%i" )
@@ -54,6 +63,8 @@ if "%param%" EQU "c" (
     )
     call :BuildAll
 )
+
+call :Do_Ending %errorlevel%
 
 echo ^>
 echo =====================================================
@@ -64,8 +75,11 @@ exit /b
 
 
 rem ****************************************************************************
-rem Gather build files
+rem Clean build files
 :Clean
+if "%VEB%" EQU "" (
+    exit /b 7
+)
 make clean
 git clean -x -d -f
 for /f "delims=" %%d in ('dir /ad/b/s /o-n') do @rd %%d 2>nul
@@ -76,13 +90,15 @@ rem ****************************************************************************
 rem Gather build files
 :Gather
 call :Save_Buildfiles
-call :Do_Ending %errorlevel%
 exit /b
 
 
 rem ****************************************************************************
 rem Build all, save logs and calulate duration
 :BuildAll
+if "%VEB%" EQU "" (
+    exit /b 7
+)
 set begin=%time%
 set PYTHONUNBUFFERED=1
 if exist %Tee_Exe% (
@@ -112,6 +128,9 @@ rem Check and save build output files
 rem
 rem 1. Check build complete
 rem
+if "%VEB%" EQU "" (
+    exit /b 7
+)
 if not exist Build\Token.h (
     exit /b 6
 )
@@ -139,23 +158,23 @@ if "%Ver_Major%" NEQ "" (
 rem
 rem 3. Check Samsung project new format
 rem
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_MAJOR" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_MAJOR	" Build\Token.h`) do (
     set /a Ver_Major=%%i
 )
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_MINOR" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_MINOR	" Build\Token.h`) do (
     set /a Ver_Minor=%%i
 )
 set test_build=4
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_TEST_BIOS_VERSION" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_TEST_BIOS_VERSION	" Build\Token.h`) do (
     set test_build=%%i
 )
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_TAG" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_TAG	" Build\Token.h`) do (
     set Ver_Tag=%%i
 )
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_RP" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_RP	" Build\Token.h`) do (
     set /a Ver_RP=%%i
 )
-for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_BUILD" Build\Token.h`) do (
+for /f "usebackq tokens=2 delims=	." %%i in (`findstr /i /c:" SAMSUNG_BIOS_VERSION_BUILD	" Build\Token.h`) do (
     set /a Ver_Build=%%i
 )
 if "%Ver_Major%" NEQ "" (
@@ -178,13 +197,19 @@ exit /b
 rem ****************************************************************************
 rem Do the ending and clean up job
 rem %~1: Ending reason:
-rem        0 - Success
-rem        6 - Project not complied yet
+rem        0 - Done
+rem        6 - Not complied yet
+rem        7 - Not a Project folder
+rem        8 - No aml file
 :Do_Ending
 if "%~1" EQU "0" ( echo ^>
-    echo ^> Success
+    echo ^> Done
 ) else if "%~1" EQU "6" ( echo ^>
-    echo ^> Project may not be compiled.
+    echo ^> Not complied yet.
+) else if "%~1" EQU "7" ( echo ^>
+    echo ^> Not a Project folder.
+) else if "%~1" EQU "8" ( echo ^>
+    echo ^> No aml file.
 )
 exit /b
 
@@ -244,6 +269,9 @@ for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| find "Build"`) d
 for /f "usebackq delims=" %%i in (`dir /b *.cab 2^>nul ^| findstr /i /c:"%~1"`) do (
     if exist %%i xcopy %%i %Rom_Name%\
 )
+for /f "usebackq delims=" %%i in (`dir /b/s *.aml ^| find "Build"`) do (
+    if exist %%i xcopy %%i %Rom_Name%\ACPI\
+)
 if exist WFU/%~1.cat xcopy WFU %Rom_Name%\WFU\
 explorer %ROM_Name%
 exit /b
@@ -297,6 +325,9 @@ for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`
 for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| find "Build"`) do (
     if exist %%i xcopy %%i %Rom_Name%\
 )
+for /f "usebackq delims=" %%i in (`dir /b/s *.aml ^| find "Build"`) do (
+    if exist %%i xcopy %%i %Rom_Name%\ACPI\
+)
 explorer %ROM_Name%
 exit /b
 
@@ -326,6 +357,9 @@ for /f "usebackq tokens=1 delims=." %%i in (`dir /b ^| ^(findstr /i /c:".veb"^)`
 )
 for /f "usebackq delims=" %%i in (`dir /b/s "%POJ_Name%.map" ^| findstr /i /c:"Build"`) do (
     if exist %%i xcopy %%i %~1\
+)
+for /f "usebackq delims=" %%i in (`dir /b/s *.aml ^| find "Build"`) do (
+    if exist %%i xcopy %%i %Rom_Name%\ACPI\
 )
 explorer %~1
 exit /b
@@ -357,7 +391,6 @@ rem Use CMD command to sort file line by name
 rem   %~1: file input
 rem   %~2: file output
 :Sort_Cmd
-setLocal enableDelayedExpansion
 if not exist %~1 (
     echo ^>
     echo ^> %~1 not found.
@@ -366,7 +399,6 @@ if not exist %~1 (
 echo ^>
 echo ^> Sorting: %~1
 sort %~1 > %~2
-endLocal
 exit /b 0
 
 
@@ -375,7 +407,6 @@ rem Use custom command to sort file and remove unwanted string
 rem   %~1: file input
 rem   %~2: file output
 :Sort_Custom
-setLocal enableDelayedExpansion
 if not exist %~1 (
     echo ^>
     echo ^> %~1 not found.
@@ -398,5 +429,24 @@ for %%a in (
     "| set-content %~2"
 ) do set Cmd_Exc=!Cmd_Exc!%%~a
 powershell -command "%Cmd_Exc%"
-endLocal
+exit /b 0
+
+
+rem ****************************************************************************
+rem Decode ACPI aml file to readable asl file
+:Asl_Decode
+if not exist *.aml (
+    exit /b 8
+)
+for /f "usebackq delims=" %%i in (`dir /b/s *.aml`) do (
+    iasl6 -d %%i
+)
+exit /b 0
+
+
+rem ****************************************************************************
+rem Print help
+:Print_Help
+echo ^>
+echo ^> bios -h
 exit /b 0
