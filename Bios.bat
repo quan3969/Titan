@@ -1,34 +1,30 @@
 @echo off
 setLocal enableDelayedExpansion
 rem For AMI AptioV project build.
-rem By Q3aN 250809
-set ver=v09
+rem By Q3aN 250902
+set ver=v10
 
 rem Future feature:
-rem  [x] veb 59
-rem  [x] bios gather for new version format
-rem  [x] collect acpi table
-rem  [x] acpi decode
-rem  [x] check folder and file before run
-rem  [ ] print help
-rem  [ ] support quick build command
+rem  [x] print help
+rem  [x] support quick build command
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to BIOS %ver%
 
-set "VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_59_x64"
+set "veb_ver=Aptio_5.x_TOOLS_JRE_59_x64"
 set "VEB="
 for /f "delims=." %%v in ('dir /b *.veb 2^>nul') do ( set "VEB=%%v" )
 if "%VEB%" EQU "AlderLake" (
-    set "VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_50"
+    set "veb_ver=Aptio_5.x_TOOLS_JRE_50!"
     set "EWDK_DIR=C:\EWDK"
 )
 if "%VEB%" EQU "RaptorLake" (
-    set "VeB_Dir=C:\Aptio_5.x_TOOLS_JRE_50"
+    set "veb_ver=Aptio_5.x_TOOLS_JRE_50!"
     set "EWDK_DIR=C:\EWDK"
 )
+set "VeB_Dir=C:\%veb_ver%"
 set "TOOLS_DIR=%VeB_Dir%\BuildTools"
 set "Java_Dir=%VeB_Dir%\VisualeBios\zulu\bin"
 set "PYTHON_COMMAND=python"
@@ -37,6 +33,21 @@ set "CLANG_BIN=C:\Program Files\LLVM\bin"
 set "path=%cd%;%TOOLS_DIR%;%Java_Dir%;%path%;"
 set "BuildLog=Build.log"
 set "Tee_Exe=C:\PROGRA~1\Git\usr\bin\tee.exe"
+rem === QuickBuild ===
+set "qb_xml_file=qb.xml"
+set "qb_micom_github_repo="
+set "qb_micom_tag="
+set "qb_bios_github_repo="
+set "qb_bios_tag="
+set "qb_build_option=single_build"
+set "qb_bios_veb_tag=%veb_ver%"
+set "qb_user_comment="
+set "qb_user=jason.zheng"
+set "qb_token=dlMb2xcUGPZ8ZyoE1Og7G766KavCVfTa4iQEaTvY"
+set "qb_link=https://package.qb.sec.samsung.net"
+set "qb_req_id="
+set "qb_build_id="
+rem === QuickBuild ===
 call :Check_Python
 set "param=%~1"
 if defined param (
@@ -55,6 +66,10 @@ if "%param%" EQU "c" (
     call :Asl_Decode
 ) else if "%param%" EQU "h" (
     call :Print_Help
+) else if "%param%" EQU "q" (
+    call :Get_Info_For_Qb
+    if !errorlevel! EQU 0 ( call :Gen_QbXml )
+    if !errorlevel! EQU 0 ( call :Quick_Build )
 ) else (
     if exist %BuildLog% (
         for /f "usebackq" %%i in (`powershell ^(Get-Item "%BuildLog%"^).CreationTime.toString^('MM/dd/yyyy'^)`) do ( set "file_date=%%i" )
@@ -210,6 +225,10 @@ if "%~1" EQU "0" ( echo ^>
     echo ^> Not a Project folder.
 ) else if "%~1" EQU "8" ( echo ^>
     echo ^> No aml file.
+) else if "%~1" EQU "9" ( echo ^>
+    echo ^> Quick Build: HEAD not push yet.
+) else if "%~1" EQU "10" ( echo ^>
+    echo ^> Quick Build: Not a "github.sec.samsung.net" repo.
 )
 exit /b
 
@@ -448,5 +467,110 @@ rem ****************************************************************************
 rem Print help
 :Print_Help
 echo ^>
-echo ^> bios -h
+echo ^> Usage: bios [options...]    Start BIOS build
+echo ^>  h, /h, -h                  Get help for commands
+echo ^>  c, /c, -c                  Clean project folder
+echo ^>  g, /g, -g                  Gather project build files
+echo ^>  s, /s, -s                  Sort build files for compare
+echo ^>  q, /q, -q                  Trigger a quick build request
+echo ^>  asl, /asl, -asl            Convert ACPI aml file to readable dsl file
+exit /b 0
+
+
+rem ****************************************************************************
+rem Generate qb.xml file
+:Gen_QbXml
+echo ^<?xml version='1.0' encoding='utf-8'?^> > %qb_xml_file%
+echo ^<com.pmease.quickbuild.BuildRequest^> >> %qb_xml_file%
+echo     ^<configurationId^>160721^</configurationId^> >> %qb_xml_file%
+echo     ^<variables^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>MICOM_ENVIRONMENT^</string^> >> %qb_xml_file%
+echo             ^<string^>2023^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>MICOM_GITHUB_REPO^</string^> >> %qb_xml_file%
+echo             ^<string^>%qb_micom_github_repo%^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>MICOM_TAG^</string^> >> %qb_xml_file%
+echo             ^<string^>%qb_micom_tag%^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>BIOS_ENVIRONMENT^</string^> >> %qb_xml_file%
+echo             ^<string^>2023^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>BIOS_GITHUB_REPO^</string^> >> %qb_xml_file%
+echo             ^<string^>%qb_bios_github_repo%^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>BIOS_TAG^</string^> >> %qb_xml_file%
+echo             ^<string^>%qb_bios_tag%^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>BIOS_VEB_GITHUB_REPO^</string^> >> %qb_xml_file%
+echo             ^<string^>MD7-PC-TEAM/TOOLS_Aptio_5.x_TOOLS_JRE^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>BIOS_VEB_TAG^</string^> >> %qb_xml_file%
+echo             ^<string^>%qb_bios_veb_tag%^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>BUILD_OPTION^</string^> >> %qb_xml_file%
+echo             ^<string^>%qb_build_option%^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>REPO_TYPE^</string^> >> %qb_xml_file%
+echo             ^<string^>github^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo         ^<entry^> >> %qb_xml_file%
+echo             ^<string^>USER_COMMENT^</string^> >> %qb_xml_file%
+echo             ^<string^>%qb_user_comment%^</string^> >> %qb_xml_file%
+echo         ^</entry^> >> %qb_xml_file%
+echo     ^</variables^> >> %qb_xml_file%
+echo ^</com.pmease.quickbuild.BuildRequest^> >> %qb_xml_file%
+exit /b 0
+
+
+rem ****************************************************************************
+rem Trigger a quick build and get link
+rem   curl -u jason.zheng:dlMb2xcUGPZ8ZyoE1Og7G766KavCVfTa4iQEaTvY -d@qb.xml https://package.qb.sec.samsung.net/rest/build_requests
+rem   curl -u jason.zheng:dlMb2xcUGPZ8ZyoE1Og7G766KavCVfTa4iQEaTvY https://package.qb.sec.samsung.net/rest/ids?request_id=6eca287b-a75f-4d3f-8c66-b2e83c2727c8
+rem   Link: https://package.qb.sec.samsung.net/build/170912335
+:Quick_Build
+for /f "usebackq tokens=3 delims=<>" %%i in (`curl -u %qb_user%:%qb_token% -d@qb.xml %qb_link%/rest/build_requests 2^>nul ^| find "requestId"`) do (
+    set "qb_req_id=%%i"
+)
+PING -n 2 127.0.0.1 > nul
+for /f "usebackq" %%i in (`curl -u %qb_user%:%qb_token% %qb_link%/rest/ids?request_id^=!qb_req_id! 2^>nul`) do (
+    set "qb_build_id=%%i"
+)
+echo ^>
+echo ^> Quick Build: https://package.qb.sec.samsung.net/build/!qb_build_id!
+exit /b 0
+
+
+rem ****************************************************************************
+rem Check current folder is github.sec.samsung.net, check
+rem  curent HEAD is on remote git
+rem   git config --get remote.origin.url
+rem   git rev-parse --short=7 HEAD
+:Get_Info_For_Qb
+for /f "usebackq tokens=6,7 delims=/." %%i in (`git config --get remote.origin.url ^| find "github.sec.samsung.net"`) do (
+    set "qb_bios_github_repo=%%i/%%j"
+)
+if "%qb_bios_github_repo%" EQU "" (
+    exit /b 10
+)
+for /f "usebackq" %%i in (`git rev-parse --short^=7 HEAD`) do (
+    set "qb_bios_tag=%%i"
+)
+set "org_exist=0"
+for /f "usebackq" %%i in (`git ls-remote origin ^| find "!qb_bios_tag!"`) do (
+    set "org_exist=1"
+)
+if "%org_exist%" NEQ "1" (
+    exit /b 9
+)
 exit /b 0
