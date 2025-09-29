@@ -5,7 +5,8 @@ rem By Q3aN 241121
 set ver=v05
 
 rem Future feature:
-rem 1. FFU backup and restore
+rem  [ ] FFU backup and restore
+rem  [ ] multi-boot install
 
 set win_ltr=W
 set sys_ltr=S

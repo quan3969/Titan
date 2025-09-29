@@ -5,8 +5,9 @@ rem By Q3aN 250219
 set ver=v05
 
 rem Future feature:
-rem  [x] set testsigning mode
 rem  [ ] explorer privicy
+rem  [ ] performance options
+rem  [ ] alias
 
 call :AskAdmin
 

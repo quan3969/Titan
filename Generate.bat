@@ -5,10 +5,8 @@ rem By Q3aN 250528
 set ver=v07
 
 rem Future feature:
-rem  [x] support PTL
-rem  [x] support new version format
-rem  [x] use powershell to get version instead of wmic
-rem  [x] support select to flash, with "f" / "a" param, flash with samsungfpt
+rem  [ ] new samsungfpt
+rem  [ ] new onepack
 
 echo.
 echo =====================================================

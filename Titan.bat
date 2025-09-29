@@ -4,6 +4,9 @@ rem For Titan WinPE.
 rem By Q3aN 250222
 set ver=v03
 
+rem Future feature:
+rem  [ ] origin winpe setup
+
 set end_pause=1
 
 echo.

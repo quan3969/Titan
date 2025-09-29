@@ -5,6 +5,9 @@ rem By Q3aN 240807
 set ver=v01
 set end_pause=0
 
+rem Future feature:
+rem  [ ] language, region setup
+
 echo.
 echo =====================================================
 echo ^>
