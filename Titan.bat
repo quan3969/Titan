@@ -6,6 +6,7 @@ set ver=v03
 
 rem Future feature:
 rem  [ ] origin winpe setup
+rem  [ ] command for backup wim
 
 set end_pause=1
 

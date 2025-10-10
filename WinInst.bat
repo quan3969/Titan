@@ -7,6 +7,8 @@ set ver=v05
 rem Future feature:
 rem  [ ] FFU backup and restore
 rem  [ ] multi-boot install
+rem  [ ] format bitlocker disk
+rem  [ ] apply backup wim
 
 set win_ltr=W
 set sys_ltr=S
