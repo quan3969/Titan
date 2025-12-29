@@ -1,18 +1,46 @@
 @echo off
 setLocal enableDelayedExpansion
 rem Find BIOS update files and generate script for easy update.
-rem By Q3aN 250528
-set ver=v07
+rem By Q3aN 251229
+set ver=v08
 
 rem Future feature:
-rem  [ ] new samsungfpt
-rem  [ ] new onepack
+rem  [x] support PTL
+rem  [x] support new version format
+rem  [x] use powershell to get version instead of wmic
+rem  [x] support select to flash, with "f" / "a" param, flash with samsungfpt
+rem  [x] hide and unhide
 
 echo.
 echo =====================================================
 echo ^>
 echo ^> Welcome to Generate %ver%
 
+set "param=%~1"
+if defined param (
+    set "param=!param:/=!"
+    set "param=!param:-=!"
+)
+if "%param%" EQU "h" (
+    call :Hide_Tools
+) else if "%param%" EQU "uh" (
+    call :UnHide_Tools
+) else if "%param%" EQU "" (
+    call :Gen_All
+) else (
+    call :Print_Help
+)
+
+echo ^>
+echo =====================================================
+echo.
+
+endLocal
+exit /b 0
+
+rem ****************************************************************************
+rem Generate All CAP, BIN, EXE script
+:Gen_All
 set "PTL_ID=JAT RHK AMB AMC VAM VAL"
 set "ARL_ID=RHH RHJ"
 set "LNL_ID=JZR VAJ ALY RHF AMA RHG"
@@ -51,14 +79,7 @@ for %%a in (
 call :Gen_CAP
 call :Gen_BIN
 call :Gen_EXE
-
-echo ^>
-echo =====================================================
-echo.
-
-endLocal
 exit /b 0
-
 
 rem ****************************************************************************
 rem Find the BIOS EXE file, generate script according to platform
@@ -79,11 +100,11 @@ for /f "usebackq delims=" %%i in (`dir /b WIN_*.exe 2^>nul`) do (
             set out_name=!file_name:~11,-4!_EXE.bat
         )
     )
-    if !file_ver! GTR 4.44.0.0 (
+    if "!file_ver!" GTR "4.44.0.0" (
         echo !file_name! /eu /op:w > !out_name!
         echo ^>
         echo ^> !out_name!
-    ) else if !file_ver! EQU 4.43.0.0 (
+    ) else if "!file_ver!" EQU "4.43.0.0" (
         rem
         rem 4.43.0.0 need "/afu" parameter
         rem
@@ -370,4 +391,25 @@ echo @echo off > RomDump_%~1.bat
 echo py .\etc\dnx_util.py .\etc\%~1\%~2 --dump dump.bin >> RomDump_%~1.bat
 echo echo. >> RomDump_%~1.bat
 echo pause >> RomDump_%~1.bat
+exit /b 0
+
+rem ****************************************************************************
+rem Print help
+:Print_Help
+echo ^>
+echo ^> Usage: Generate [options...]    Start BIOS build
+echo ^>  h,   /h,   -h                  Hide tools to keep dir clean
+echo ^>  uh,  /uh,  -uh                 UnHide tools
+exit /b 0
+
+rem ****************************************************************************
+rem Unhide all tools
+:UnHide_Tools
+for /f "usebackq delims=" %%d in (`dir /b/a ^| findstr /v "Generate.bat Archive"`) do attrib "%%d" -s -h 
+exit /b 0
+
+rem ****************************************************************************
+rem Print help
+:Hide_Tools
+for /f "usebackq delims=" %%d in (`dir /b/a ^| findstr /v "Generate.bat Archive"`) do attrib "%%d" +s +h
 exit /b 0
