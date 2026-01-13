@@ -1,12 +1,12 @@
 @echo off
 setLocal enableDelayedExpansion
 rem All in one script for windows customization
-rem By Q3aN 250219
-set ver=v05
+rem By Q3aN 260113
+set ver=v06
 
 rem Future feature:
 rem  [ ] explorer privicy
-rem  [ ] performance options
+rem  [x] performance options
 rem  [ ] alias
 
 call :AskAdmin
@@ -16,20 +16,14 @@ echo =====================================================
 echo ^>
 echo ^> Welcome to Turtle %ver%
 
-rem
-rem Win11
-rem
 if %errorlevel% EQU 0 ( call :Set_LagecyMenu      1 )
-
-rem
-rem Win10 / Win11
-rem
 if %errorlevel% EQU 0 ( call :Set_AntiSpyWare     0 )
 if %errorlevel% EQU 0 ( call :Set_ShowSeconds     1 )
 if %errorlevel% EQU 0 ( call :Set_AutoUpdate      0 )
 if %errorlevel% EQU 0 ( call :Set_UsbPrompt       0 )
 if %errorlevel% EQU 0 ( call :Set_RemoteDesktop   1 )
 if %errorlevel% EQU 0 ( call :Set_ShowHidden      1 )
+if %errorlevel% EQU 0 ( call :Set_VisualOptimize  1 )
 :: if %errorlevel% EQU 0 ( call :Set_TestSigning     0 )
 :: if %errorlevel% EQU 0 ( call :Set_Recovery        0 )
 :: if %errorlevel% EQU 0 ( call :Set_AutoAdminLogon    )
@@ -419,4 +413,39 @@ if "%~1" EQU "0" if %val% EQU 1 (
     exit /b 0
 )
 echo ^>  Test Mode:          %val%
+exit /b 0
+
+rem ****************************************************************************
+rem Set UI Performance Mode
+rem 
+:Set_VisualOptimize
+set "val=0"
+for /f "tokens=3" %%i in ('reg query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" 2^>nul ^| find "VisualFXSetting"') do (
+    if "%%i" EQU "0x3" set "val=1"
+)
+if "%~1" EQU "0" if %val% EQU 1 (
+    reg delete "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v "VisualFXSetting" /f >nul
+    reg add "HKCU\Software\Microsoft\Windows\DWM" /v "EnableAeroPeek" /t "REG_DWORD" /d 1 /f >nul
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "TaskbarAnimations" /t "REG_DWORD" /d 1 /f >nul
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ListviewAlphaSelect" /t "REG_DWORD" /d 1 /f >nul
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ListviewShadow" /t "REG_DWORD" /d 1 /f >nul
+    reg add "HKCU\Control Panel\Desktop" /v "DragFullWindows" /t "REG_SZ" /d 1 /f >nul
+    reg add "HKCU\Control Panel\Desktop" /v "UserPreferencesMask" /t "REG_BINARY" /d 9E1E078012000000 /f >nul
+    reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v "MinAnimate" /t "REG_SZ" /d 1 /f >nul
+    echo ^>  Visual Optimize:  1 -^> 0
+    exit /b 0
+)
+if "%~1" EQU "1" if %val% EQU 0 (
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\VisualEffects" /v "VisualFXSetting" /t "REG_DWORD" /d 3 /f >nul
+    reg add "HKCU\Software\Microsoft\Windows\DWM" /v "EnableAeroPeek" /t "REG_DWORD" /d 0 /f >nul
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "TaskbarAnimations" /t "REG_DWORD" /d 0 /f >nul
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ListviewAlphaSelect" /t "REG_DWORD" /d 0 /f >nul
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ListviewShadow" /t "REG_DWORD" /d 0 /f >nul
+    reg add "HKCU\Control Panel\Desktop" /v "DragFullWindows" /t "REG_SZ" /d 0 /f >nul
+    reg add "HKCU\Control Panel\Desktop" /v "UserPreferencesMask" /t "REG_BINARY" /d 9012038012000000 /f >nul
+    reg add "HKCU\Control Panel\Desktop\WindowMetrics" /v "MinAnimate" /t "REG_SZ" /d 0 /f >nul
+    echo ^>  Visual Optimize:  0 -^> 1
+    exit /b 0
+)
+echo ^>  Visual Optimize:    %val%
 exit /b 0
