@@ -1,8 +1,8 @@
 @echo off
 setLocal enableDelayedExpansion
 rem All in one script for windows customization
-rem By Q3aN 260113
-set ver=v06
+rem By Q3aN 260117
+set ver=v07
 
 rem Future feature:
 rem  [ ] explorer privicy
@@ -24,6 +24,7 @@ if %errorlevel% EQU 0 ( call :Set_UsbPrompt       0 )
 if %errorlevel% EQU 0 ( call :Set_RemoteDesktop   1 )
 if %errorlevel% EQU 0 ( call :Set_ShowHidden      1 )
 if %errorlevel% EQU 0 ( call :Set_VisualOptimize  1 )
+if %errorlevel% EQU 0 ( call :Set_SerachWebResult 0 )
 :: if %errorlevel% EQU 0 ( call :Set_TestSigning     0 )
 :: if %errorlevel% EQU 0 ( call :Set_Recovery        0 )
 :: if %errorlevel% EQU 0 ( call :Set_AutoAdminLogon    )
@@ -181,6 +182,7 @@ rem        5 - Not admin (user click "Yes", origin script, don't care)
 :Do_Ending
 if "%~1" EQU "0" ( echo ^>
     echo ^> Success
+    taskkill /f /im explorer.exe >nul 2>nul & start explorer.exe
 ) else if "%~1" EQU "4" ( echo ^>
     echo ^> Please run as administrator
 )
@@ -448,4 +450,24 @@ if "%~1" EQU "1" if %val% EQU 0 (
     exit /b 0
 )
 echo ^>  Visual Optimize:    %val%
+exit /b 0
+
+rem ****************************************************************************
+rem Set DisableSearchBoxSuggestions
+:Set_SerachWebResult
+set val=1
+for /f "tokens=3" %%i in ('reg query "HKCU\Software\Policies\Microsoft\Windows\Explorer" 2^>nul ^| find "DisableSearchBoxSuggestions"') do (
+    if "%%i"=="0x1" set val=0
+)
+if "%~1" EQU "0" if %val% EQU 1 (
+    reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v "DisableSearchBoxSuggestions" /t "REG_DWORD" /d 1 /f >nul
+    echo ^>  Serach Web Result:  1 -^> 0
+    exit /b 0
+)
+if "%~1" EQU "1" if %val% EQU 0 (
+    reg add "HKCU\Software\Policies\Microsoft\Windows\Explorer" /v "DisableSearchBoxSuggestions" /t "REG_DWORD" /d 0 /f >nul
+    echo ^>  Serach Web Result:  0 -^> 1
+    exit /b 0
+)
+echo ^>  Serach Web Result:  %val%
 exit /b 0
