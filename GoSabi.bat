@@ -1,9 +1,17 @@
 @echo off
 setLocal enableDelayedExpansion
 
-rem By Q3aN 260117
-set "ver=v1"
+rem By Q3aN 260119
+set "ver=v02"
 
+rem Future feature:
+rem  [x] ec ver
+rem  [x] check sabi
+rem  [ ] pd ver
+rem  [ ] show ec, pd default
+rem  [ ] user select ui
+rem  [ ] set shipmode
+rem  [ ] dci on/off
 call :AskAdmin
 
 echo.
@@ -16,14 +24,12 @@ if defined param (
     set "param=!param:/=!"
     set "param=!param:-=!"
 )
-set "sabiscai=%~dp0%\SabiScai.exe"
+set "sabiscai=%bat_dir%\SabiScai.exe"
+if "%errorlevel%" EQU "0" ( call :Check_Sabi )
 if "%errorlevel%" EQU "0" if exist "%sabiscai%" (
     if "%param%" EQU "ec" (
         call :EcVer
-    ) else if "%param%" EQU "pd" (
-        call :Print_Help
     ) else (
-        call :SabiVer
         call :Print_Help
     )
 )
@@ -42,12 +48,13 @@ rem ****************************************************************************
 rem Do the ending and clean up job
 rem %~1: Ending reason:
 rem        0 - Success
+rem        3 - Sabi not support
 rem        4 - Not admin (user click "No")
 rem        5 - Not admin (user click "Yes", origin script, don't care)
 :Do_Ending
 if "%~1" EQU "0" ( echo ^>
     echo ^> Done
-) else if "%~1" EQU "1" ( echo ^>
+) else if "%~1" EQU "3" ( echo ^>
     echo ^> Not support
 ) else if "%~1" EQU "4" ( echo ^>
     echo ^> Please run as administrator
@@ -70,6 +77,33 @@ set "b2=%sabi_return:~3,2%"
 set "sabi_fomat=%b2%%b1%"
 echo ^>
 echo ^> SABI ver: %sabi_fomat%
+exit /b
+
+
+rem ****************************************************************************
+rem Get EC ver
+:EcVer
+for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 46`) do (
+    if "%%a" EQU "Output:" set "sabi_return=%%g"
+)
+for /f "usebackq delims=" %%i in (
+    `powershell -c "$h='%sabi_return%'; -join ($h.Split(' ') | Where-Object {$_ -ne '00'} | ForEach-Object {[char][convert]::ToByte($_,16)})"`
+    ) do (
+    set "sabi_fomat=%%i"
+)
+echo ^>
+echo ^> EC ver:   %sabi_fomat%
+exit /b
+
+
+rem ****************************************************************************
+rem Check SABI
+:Check_Sabi
+set "sabi_return="
+for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 00`) do (
+    if "%%a" EQU "Output:" set "sabi_return=%%g"
+)
+if "%sabi_return%" EQU "" exit /b 3
 exit /b
 
 
@@ -126,8 +160,8 @@ rem   - - 81         # On
 :Print_Help
 echo ^>
 echo ^> Usage: GoSabi [options...]  Get SABI version (00)
-echo ^>  ec                         Get EC version   (46)
-echo ^>  pd                         Get PD version   ()
+echo ^>  ec, /ec, -ec               Get EC version   (46)
+echo ^>  pd, /pd, -pd               Get PD version   ()
 exit /b 0
 
 
