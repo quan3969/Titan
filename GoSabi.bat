@@ -1,14 +1,14 @@
 @echo off
 setLocal enableDelayedExpansion
 
-rem By Q3aN 260119
-set "ver=v02"
+rem By Q3aN 260121
+set "ver=v03"
 
 rem Future feature:
 rem  [x] ec ver
 rem  [x] check sabi
-rem  [ ] pd ver
-rem  [ ] show ec, pd default
+rem  [x] pd ver
+rem  [x] show ec, pd default
 rem  [ ] user select ui
 rem  [ ] set shipmode
 rem  [ ] dci on/off
@@ -27,8 +27,8 @@ if defined param (
 set "sabiscai=%bat_dir%\SabiScai.exe"
 if "%errorlevel%" EQU "0" ( call :Check_Sabi )
 if "%errorlevel%" EQU "0" if exist "%sabiscai%" (
-    if "%param%" EQU "ec" (
-        call :EcVer
+    if "%param%" EQU "1" (
+        call :Set_Shipmode
     ) else (
         call :Print_Help
     )
@@ -68,31 +68,34 @@ exit /b
 
 rem ****************************************************************************
 rem Get SABI ver
-:SabiVer
+:Get_SabiVer
+set "sabi_return="
+set "sabi_format="
 for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 00`) do (
     if "%%a" EQU "Output:" set "sabi_return=%%g"
 )
-set "b1=%sabi_return:~0,2%"
-set "b2=%sabi_return:~3,2%"
-set "sabi_fomat=%b2%%b1%"
-echo ^>
-echo ^> SABI ver: %sabi_fomat%
+for /f "tokens=1,2" %%a in ("%sabi_return%") do (
+    set "sabi_format=%%b%%a"
+)
+echo ^>   Sabi ver (00)           : %sabi_format%
 exit /b
 
 
 rem ****************************************************************************
 rem Get EC ver
-:EcVer
+:Get_EcVer
+set "dec="
+set "sabi_return="
+set "sabi_format="
 for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 46`) do (
     if "%%a" EQU "Output:" set "sabi_return=%%g"
 )
-for /f "usebackq delims=" %%i in (
-    `powershell -c "$h='%sabi_return%'; -join ($h.Split(' ') | Where-Object {$_ -ne '00'} | ForEach-Object {[char][convert]::ToByte($_,16)})"`
-    ) do (
-    set "sabi_fomat=%%i"
+for %%i in (%sabi_return%) do (
+    set /a "dec=0x%%i"
+    cmd /c exit !dec!
+    set "sabi_format=!sabi_format!!=ExitCodeAscii!"
 )
-echo ^>
-echo ^> EC ver:   %sabi_fomat%
+echo ^>   EC ver (46)             : %sabi_format%
 exit /b
 
 
@@ -104,6 +107,31 @@ for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 00`) do (
     if "%%a" EQU "Output:" set "sabi_return=%%g"
 )
 if "%sabi_return%" EQU "" exit /b 3
+exit /b
+
+
+rem ****************************************************************************
+rem Get PD ver
+:Get_PdVer
+set "sabi_return="
+set "sabi_format="
+for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 7a 82 ef a9 01`) do (
+    if "%%a" EQU "Output:" set "sabi_return=%%g"
+)
+for /f "tokens=7,8,9,10" %%a in ("%sabi_return%") do (
+    set "pd_major_hex=%%c %%b %%a"
+    set "pd_com_hex=%%d"
+)
+set /a "pd_ver=0x%pd_com_hex%"
+set /a "pd_index=(pd_ver & 0xC0) >> 6"
+set /a "pd_minor=pd_ver & 0x3F"
+for %%i in (%pd_major_hex%) do (
+    set /a "dec=0x%%i"
+    cmd /c exit !dec!
+    set "pd_major=!pd_major!!=ExitCodeAscii!"
+)
+set "sabi_format=%pd_major%.%pd_index%.%pd_minor%"
+echo ^>   PD ver (7A 82 EF A9 01) : %sabi_format%
 exit /b
 
 
@@ -121,6 +149,7 @@ rem   - - E8         # Set Shipmode
 rem   - - F5         # Disable ME
 rem   - - EF         # Micom Special Command
 rem   - - - 88       # Get TJ_MAX
+rem   - - - A9       # Get PD version
 rem   - - - BA       # Connector status
 rem   - - - - 80     # Get DtoS connector status
 rem   - - - - 81     # Get Display connector status
@@ -159,9 +188,12 @@ rem   - - 80         # Off
 rem   - - 81         # On
 :Print_Help
 echo ^>
-echo ^> Usage: GoSabi [options...]  Get SABI version (00)
-echo ^>  ec, /ec, -ec               Get EC version   (46)
-echo ^>  pd, /pd, -pd               Get PD version   ()
+call :Get_SabiVer
+call :Get_EcVer
+call :Get_PdVer
+echo ^>
+echo ^>  Select:
+echo ^>   1. Shipmode (7A 82 E8)
 exit /b 0
 
 
