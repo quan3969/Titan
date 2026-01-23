@@ -1,17 +1,19 @@
 @echo off
 setLocal enableDelayedExpansion
 
-rem By Q3aN 260121
-set "ver=v03"
+rem By Q3aN 260123
+set "ver=v04"
 
 rem Future feature:
 rem  [x] ec ver
 rem  [x] check sabi
 rem  [x] pd ver
 rem  [x] show ec, pd default
-rem  [ ] user select ui
+rem  [x] user select ui
 rem  [ ] set shipmode
 rem  [ ] dci on/off
+rem  [ ] hdmi ver
+rem  [ ] oa key
 call :AskAdmin
 
 echo.
@@ -24,14 +26,11 @@ if defined param (
     set "param=!param:/=!"
     set "param=!param:-=!"
 )
-set "sabiscai=%bat_dir%\SabiScai.exe"
 if "%errorlevel%" EQU "0" ( call :Check_Sabi )
-if "%errorlevel%" EQU "0" if exist "%sabiscai%" (
-    if "%param%" EQU "1" (
-        call :Set_Shipmode
-    ) else (
-        call :Print_Help
-    )
+if "%errorlevel%" EQU "0" (
+    call :Print_Info
+    call :Print_Menu
+    if "%user_sel%" EQU "1" call :Set_Shipmode
 )
 
 call :Do_Ending "%errorlevel%"
@@ -48,12 +47,15 @@ rem ****************************************************************************
 rem Do the ending and clean up job
 rem %~1: Ending reason:
 rem        0 - Success
+rem        2 - Sabiscai.exe not exist
 rem        3 - Sabi not support
 rem        4 - Not admin (user click "No")
 rem        5 - Not admin (user click "Yes", origin script, don't care)
 :Do_Ending
 if "%~1" EQU "0" ( echo ^>
     echo ^> Done
+) else if "%~1" EQU "2" ( echo ^>
+    echo ^> Sabiscai.exe not exist
 ) else if "%~1" EQU "3" ( echo ^>
     echo ^> Not support
 ) else if "%~1" EQU "4" ( echo ^>
@@ -77,7 +79,7 @@ for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 00`) do (
 for /f "tokens=1,2" %%a in ("%sabi_return%") do (
     set "sabi_format=%%b%%a"
 )
-echo ^>   Sabi ver (00)           : %sabi_format%
+echo ^>  - Sabi ver (00)           : %sabi_format%
 exit /b
 
 
@@ -95,13 +97,15 @@ for %%i in (%sabi_return%) do (
     cmd /c exit !dec!
     set "sabi_format=!sabi_format!!=ExitCodeAscii!"
 )
-echo ^>   EC ver (46)             : %sabi_format%
+echo ^>  - EC ver (46)             : %sabi_format%
 exit /b
 
 
 rem ****************************************************************************
 rem Check SABI
 :Check_Sabi
+set "sabiscai=%bat_dir%\SabiScai.exe"
+if not exist "%sabiscai%" exit /b 2
 set "sabi_return="
 for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 00`) do (
     if "%%a" EQU "Output:" set "sabi_return=%%g"
@@ -131,7 +135,28 @@ for %%i in (%pd_major_hex%) do (
     set "pd_major=!pd_major!!=ExitCodeAscii!"
 )
 set "sabi_format=%pd_major%.%pd_index%.%pd_minor%"
-echo ^>   PD ver (7A 82 EF A9 01) : %sabi_format%
+echo ^>  - PD ver (7A 82 EF A9 01) : %sabi_format%
+exit /b
+
+
+rem ****************************************************************************
+rem Get PD ver
+:Print_Info
+echo ^>
+echo ^> Basic Info:
+call :Get_SabiVer
+call :Get_EcVer
+call :Get_PdVer
+exit /b
+
+
+rem ****************************************************************************
+rem Set shipmode
+:Set_Shipmode
+for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 00`) do (
+    if "%%a" EQU "Output:" set "sabi_return=%%g"
+)
+echo %sabi_return%
 exit /b
 
 
@@ -186,14 +211,15 @@ rem   - 82           # Get IBECC status
 rem   - 83           # Set IBECC status
 rem   - - 80         # Off
 rem   - - 81         # On
-:Print_Help
+:Print_Menu
 echo ^>
-call :Get_SabiVer
-call :Get_EcVer
-call :Get_PdVer
+echo ^> Call SABI:
+echo ^>  1. Shipmode      (7A 82 E8)
+echo ^>  2. DCI Config    (96)
+echo ^>  3. PurchasedDate (47)
+echo ^>  4. Disable ME    (47)
 echo ^>
-echo ^>  Select:
-echo ^>   1. Shipmode (7A 82 E8)
+set /p "user_sel=> Select: "
 exit /b 0
 
 
