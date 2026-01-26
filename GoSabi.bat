@@ -1,8 +1,8 @@
 @echo off
 setLocal enableDelayedExpansion
 
-rem By Q3aN 260123
-set "ver=v04"
+rem By Q3aN 260126
+set "ver=v05"
 
 rem Future feature:
 rem  [x] ec ver
@@ -10,8 +10,9 @@ rem  [x] check sabi
 rem  [x] pd ver
 rem  [x] show ec, pd default
 rem  [x] user select ui
-rem  [ ] set shipmode
-rem  [ ] dci on/off
+rem  [x] set shipmode
+rem  [x] me disable
+rem  [x] dci on/off
 rem  [ ] hdmi ver
 rem  [ ] oa key
 call :AskAdmin
@@ -28,9 +29,11 @@ if defined param (
 )
 if "%errorlevel%" EQU "0" ( call :Check_Sabi )
 if "%errorlevel%" EQU "0" (
-    call :Print_Info
     call :Print_Menu
-    if "%user_sel%" EQU "1" call :Set_Shipmode
+    if "!user_sel!" EQU "1" call :Set_Shipmode
+    if "!user_sel!" EQU "2" call :Set_Dci
+    if "!user_sel!" EQU "3" call :Set_PurchaseDate
+    if "!user_sel!" EQU "4" call :Set_MeDisable
 )
 
 call :Do_Ending "%errorlevel%"
@@ -72,14 +75,13 @@ rem ****************************************************************************
 rem Get SABI ver
 :Get_SabiVer
 set "sabi_return="
-set "sabi_format="
+set "sabi_ver="
 for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 00`) do (
     if "%%a" EQU "Output:" set "sabi_return=%%g"
 )
 for /f "tokens=1,2" %%a in ("%sabi_return%") do (
-    set "sabi_format=%%b%%a"
+    set "sabi_ver=%%b%%a"
 )
-echo ^>  - Sabi ver (00)           : %sabi_format%
 exit /b
 
 
@@ -88,16 +90,15 @@ rem Get EC ver
 :Get_EcVer
 set "dec="
 set "sabi_return="
-set "sabi_format="
+set "ec_ver="
 for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 46`) do (
     if "%%a" EQU "Output:" set "sabi_return=%%g"
 )
 for %%i in (%sabi_return%) do (
     set /a "dec=0x%%i"
     cmd /c exit !dec!
-    set "sabi_format=!sabi_format!!=ExitCodeAscii!"
+    set "ec_ver=!ec_ver!!=ExitCodeAscii!"
 )
-echo ^>  - EC ver (46)             : %sabi_format%
 exit /b
 
 
@@ -118,7 +119,7 @@ rem ****************************************************************************
 rem Get PD ver
 :Get_PdVer
 set "sabi_return="
-set "sabi_format="
+set "pd_ver="
 for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 7a 82 ef a9 01`) do (
     if "%%a" EQU "Output:" set "sabi_return=%%g"
 )
@@ -126,37 +127,59 @@ for /f "tokens=7,8,9,10" %%a in ("%sabi_return%") do (
     set "pd_major_hex=%%c %%b %%a"
     set "pd_com_hex=%%d"
 )
-set /a "pd_ver=0x%pd_com_hex%"
-set /a "pd_index=(pd_ver & 0xC0) >> 6"
-set /a "pd_minor=pd_ver & 0x3F"
+set /a "pd_ver_hex=0x%pd_com_hex%"
+set /a "pd_index=(pd_ver_hex & 0xC0) >> 6"
+set /a "pd_minor=pd_ver_hex & 0x3F"
 for %%i in (%pd_major_hex%) do (
     set /a "dec=0x%%i"
     cmd /c exit !dec!
     set "pd_major=!pd_major!!=ExitCodeAscii!"
 )
-set "sabi_format=%pd_major%.%pd_index%.%pd_minor%"
-echo ^>  - PD ver (7A 82 EF A9 01) : %sabi_format%
-exit /b
-
-
-rem ****************************************************************************
-rem Get PD ver
-:Print_Info
-echo ^>
-echo ^> Basic Info:
-call :Get_SabiVer
-call :Get_EcVer
-call :Get_PdVer
+set "pd_ver=%pd_major%.%pd_index%.%pd_minor%"
 exit /b
 
 
 rem ****************************************************************************
 rem Set shipmode
 :Set_Shipmode
-for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 00`) do (
+for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 7A 82 E8`) do (
     if "%%a" EQU "Output:" set "sabi_return=%%g"
 )
-echo %sabi_return%
+echo ^>
+echo ^> Return: %sabi_return%
+exit /b
+
+
+rem ****************************************************************************
+rem Set ME disable
+:Set_MeDisable
+for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 7A 82 F5`) do (
+    if "%%a" EQU "Output:" set "sabi_return=%%g"
+)
+echo ^>
+echo ^> Return: %sabi_return%
+exit /b
+
+
+rem ****************************************************************************
+rem Set Purchase date
+:Set_PurchaseDate
+for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 47`) do (
+    if "%%a" EQU "Output:" set "sabi_return=%%g"
+)
+echo ^>
+echo ^> Return: %sabi_return%
+exit /b
+
+
+rem ****************************************************************************
+rem Set Dci
+:Set_Dci
+for /f "usebackq tokens=1,2,3,4,5,6,* delims= " %%a in (`"%sabiscai%" 96 81 81`) do (
+    if "%%a" EQU "Output:" set "sabi_return=%%g"
+)
+echo ^>
+echo ^> Return: %sabi_return%
 exit /b
 
 
@@ -212,12 +235,20 @@ rem   - 83           # Set IBECC status
 rem   - - 80         # Off
 rem   - - 81         # On
 :Print_Menu
+call :Get_SabiVer
+call :Get_EcVer
+call :Get_PdVer
+echo ^>
+echo ^> Basic Info:
+echo ^>  - Sabi (00)             : %sabi_ver%
+echo ^>  - EC   (46)             : %ec_ver%
+echo ^>  - PD   (7A 82 EF A9 01) : %pd_ver%
 echo ^>
 echo ^> Call SABI:
 echo ^>  1. Shipmode      (7A 82 E8)
 echo ^>  2. DCI Config    (96)
 echo ^>  3. PurchasedDate (47)
-echo ^>  4. Disable ME    (47)
+echo ^>  4. Disable ME    (F5)
 echo ^>
 set /p "user_sel=> Select: "
 exit /b 0
