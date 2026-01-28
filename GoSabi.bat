@@ -1,8 +1,8 @@
 @echo off
 setLocal enableDelayedExpansion
 
-rem By Q3aN 260126
-set "ver=v05"
+rem By Q3aN 260128
+set "ver=v06"
 
 rem Future feature:
 rem  [x] ec ver
@@ -13,7 +13,7 @@ rem  [x] user select ui
 rem  [x] set shipmode
 rem  [x] me disable
 rem  [x] dci on/off
-rem  [ ] hdmi ver
+rem  [x] hdmi ver
 rem  [ ] oa key
 call :AskAdmin
 
@@ -184,6 +184,38 @@ exit /b
 
 
 rem ****************************************************************************
+rem Get HDMI ver (Chn 1)
+rem     ForceHdmiRetimerPowerEnable(TRUE); 7A 82 EF AD 80
+rem     MicroSecondDelay(50 * 1000); //Delay 50ms
+rem     Status = EcGetHdmiRetimerVersion(&Major, &Minor);
+rem       Status = EcReadFromI2c(SAMSUNG_HDMI_RETIMER_CHANNEL, 0xAC/*PAGE_14*/, 0xFE, Buffer, 1);
+rem         7A 82 EF A7
+rem         7A 82 EF A4 01 0D AC FE 01
+rem         7A 82 EF A3 00
+rem         7A 82 EF A1
+rem       Status = EcReadFromI2c(SAMSUNG_HDMI_RETIMER_CHANNEL, 0xAC/*PAGE_14*/, 0xFF, Buffer, 1);
+rem     ForceHdmiRetimerPowerEnable(FALSE); 7A 82 EF AD 81
+:Get_HdmiVer
+"%sabiscai%" 7A 82 EF AD 80 >nul
+ping 127.0.0.1 -n 1 >nul
+"%sabiscai%" 7A 82 EF A7 >nul
+"%sabiscai%" 7A 82 EF A4 01 0D AC FE 01 >nul
+for /f "usebackq tokens=1,2,3,4,5,6,11 delims= " %%a in (`"%sabiscai%" 7A 82 EF A3`) do (
+    if "%%a" EQU "Output:" set "hdmi_ver_maj=%%g"
+)
+"%sabiscai%" 7A 82 EF A1 >nul
+"%sabiscai%" 7A 82 EF A7 >nul
+"%sabiscai%" 7A 82 EF A4 01 0D AC FF 01 >nul
+for /f "usebackq tokens=1,2,3,4,5,6,11 delims= " %%a in (`"%sabiscai%" 7A 82 EF A3`) do (
+    if "%%a" EQU "Output:" set "hdmi_ver_min=%%g"
+)
+"%sabiscai%" 7A 82 EF A1 >nul
+"%sabiscai%" 7A 82 EF AD 81 >nul
+set "hdmi_ver=!hdmi_ver_maj!.!hdmi_ver_min!"
+exit /b
+
+
+rem ****************************************************************************
 rem Print help
 rem  00              # Get SABI ver
 rem  04              # Get model name
@@ -196,6 +228,11 @@ rem   - 82           # Send Ec Command with Parameter
 rem   - - E8         # Set Shipmode
 rem   - - F5         # Disable ME
 rem   - - EF         # Micom Special Command
+rem   - - - A1       # Exit I2C mode
+rem   - - - A3       # Get I2C buffer
+rem   - - - A4       # Send I2C buffer
+rem   - - - A7       # Enter I2C mode
+rem   - - - AD       # SET_HDMI_RETIMER_POWER
 rem   - - - 88       # Get TJ_MAX
 rem   - - - A9       # Get PD version
 rem   - - - BA       # Connector status
@@ -238,11 +275,13 @@ rem   - - 81         # On
 call :Get_SabiVer
 call :Get_EcVer
 call :Get_PdVer
+call :Get_HdmiVer
 echo ^>
 echo ^> Basic Info:
 echo ^>  - Sabi (00)             : %sabi_ver%
 echo ^>  - EC   (46)             : %ec_ver%
 echo ^>  - PD   (7A 82 EF A9 01) : %pd_ver%
+echo ^>  - HDMI (7A 82 EF AD)    : %hdmi_ver%
 echo ^>
 echo ^> Call SABI:
 echo ^>  1. Shipmode      (7A 82 E8)
